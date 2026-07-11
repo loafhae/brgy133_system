@@ -1,0 +1,6 @@
+opencv-python
+numpy
+shapely
+websocket-client
+# Note: `ncnn` Python bindings are platform-specific and may need to be built separately.
+# See your platform's instructions for installing the ncnn Python bindings.

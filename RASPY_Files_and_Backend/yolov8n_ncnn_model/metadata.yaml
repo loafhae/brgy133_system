@@ -1,0 +1,19 @@
+description: Ultralytics best model trained on /kaggle/working/datasets/garbagetruckbrgy143-12824952/data.yaml
+author: Ultralytics
+date: '2026-07-04T12:43:18.044519'
+version: 8.4.61
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: detect
+batch: 1
+imgsz:
+- 640
+- 640
+names:
+  0: garbage_truck
+args:
+  batch: 1
+  half: false
+channels: 3
+end2end: false

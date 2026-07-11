@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vision-Trak — FR-to-API Reference &amp; Test Matrix</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #1f2937; padding: 24px; }
+h1 { font-size: 1.6em; margin-bottom: 4px; }
+.subtitle { color: #6b7280; margin-bottom: 24px; font-size: 0.92em; }
+.fr { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; }
+.fr-header { padding: 16px 20px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid #e5e7eb; cursor: pointer; }
+.fr-header:hover { background: #f9fafb; }
+.fr-id { font-weight: 700; color: #2563eb; font-size: 0.95em; min-width: 60px; }
+.fr-desc { flex: 1; font-weight: 600; font-size: 0.95em; }
+.fr-priority { font-size: 0.7em; padding: 3px 10px; border-radius: 12px; font-weight: 600; letter-spacing: 0.3px; }
+.pri-high { background: #fee2e2; color: #dc2626; }
+.pri-medium { background: #fef3c7; color: #d97706; }
+.pri-low { background: #d1fae5; color: #059669; }
+.fr-actor { font-size: 0.72em; color: #6b7280; background: #f3f4f6; padding: 3px 10px; border-radius: 12px; }
+.fr-body { padding: 0 20px 20px; display: none; }
+.fr-body.open { display: block; }
+
+.acceptance { background: #f0fdf4; border-left: 3px solid #22c55e; padding: 12px 16px; margin: 16px 0; border-radius: 0 6px 6px 0; font-size: 0.88em; }
+.acceptance h4 { color: #166534; margin-bottom: 6px; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; }
+.acceptance ul { padding-left: 20px; }
+.acceptance li { margin-bottom: 4px; color: #374151; }
+
+.endpoint-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.86em; }
+.endpoint-table th { background: #f3f4f6; text-align: left; padding: 8px 12px; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; }
+.endpoint-table td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; line-height: 1.5; }
+.endpoint-table tr:last-child td { border-bottom: none; }
+.method { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.8em; color: #fff; }
+.m-GET { background: #2563eb; }
+.m-POST { background: #16a34a; }
+.m-PUT { background: #d97706; }
+.m-DELETE { background: #dc2626; }
+.path { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.9em; color: #1f2937; white-space: nowrap; }
+.code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85em; background: #f3f4f6; padding: 1px 5px; border-radius: 3px; color: #1f2937; }
+pre { background: #1f2937; color: #e5e7eb; padding: 12px 16px; border-radius: 6px; font-size: 0.82em; overflow-x: auto; margin: 8px 0; line-height: 1.5; }
+pre .comment { color: #6b7280; }
+.test-btn { padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.78em; white-space: nowrap; }
+.test-btn:hover { opacity: 0.85; }
+.test-btn:disabled { opacity: 0.4; cursor: wait; }
+.test-resp { background: #0d1117; color: #e5e7eb; border-radius: 6px; padding: 10px 14px; margin-top: 6px; font-family: 'SF Mono', monospace; font-size: 0.78em; white-space: pre-wrap; overflow-x: auto; display: none; max-height: 300px; overflow-y: auto; line-height: 1.5; }
+.test-resp .status-line { padding: 2px 8px; border-radius: 3px; display: inline-block; margin-bottom: 6px; font-weight: 600; font-size: 0.9em; }
+.s-2xx { background: #065f46; color: #6ee7b7; }
+.s-4xx { background: #7f1d1d; color: #fca5a5; }
+.s-5xx { background: #7f1d1d; color: #fca5a5; }
+.test-body-edit { width: 100%; background: #1f2937; color: #e5e7eb; border: 1px solid #374151; border-radius: 4px; padding: 6px 8px; font-family: 'SF Mono', monospace; font-size: 0.78em; min-height: 50px; resize: vertical; margin-top: 4px; display: none; }
+
+.tc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 10px; margin: 12px 0; }
+.tc-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; font-size: 0.85em; }
+.tc-card .tc-id { font-weight: 700; color: #2563eb; font-family: monospace; font-size: 0.9em; }
+.tc-card .tc-title { color: #374151; margin: 4px 0; }
+.tc-card .tc-step { color: #6b7280; font-size: 0.85em; margin-top: 4px; }
+.tc-card .tc-expect { color: #059669; font-size: 0.85em; margin-top: 2px; }
+
+.summary-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.summary-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 20px; min-width: 110px; text-align: center; }
+.summary-card .n { font-size: 1.6em; font-weight: 700; color: #2563eb; }
+.summary-card .l { font-size: 0.75em; color: #6b7280; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<h1>Vision-Trak: FR-to-API Reference &amp; Test Matrix</h1>
+<p class="subtitle">Multi-Platform Barangay Announcement and Garbage Collection Notifier using IOT Technology — Barangay 133, Tondo, Manila</p>
+
+<div class="summary-row">
+  <div class="summary-card"><div class="n">16</div><div class="l">Functional Reqs</div></div>
+  <div class="summary-card"><div class="n">25+</div><div class="l">API Endpoints</div></div>
+  <div class="summary-card"><div class="n">3</div><div class="l">User Roles</div></div>
+</div>
+
+<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+  <div style="font-weight:600;font-size:0.9em;color:#374151">Login</div>
+  <input id="loginBaseUrl" value="http://localhost:8000" style="padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:0.85em;width:160px;font-family:monospace">
+  <input id="loginUser" value="admin" placeholder="Username" style="padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:0.85em;width:130px">
+  <input id="loginPass" value="admin123" type="password" placeholder="Password" style="padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:0.85em;width:130px">
+  <button onclick="doLogin()" style="padding:7px 18px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:0.85em">Login</button>
+  <span id="loginStatus" style="font-size:0.85em;color:#6b7280">Not logged in</span>
+</div>
+<div id="tokenBar" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 16px;margin-bottom:16px;font-size:0.82em;word-break:break-all;font-family:monospace">
+  <strong style="color:#166534">Token:</strong> <span id="tokenDisplay"></span>
+  <br><strong style="color:#166534">Role:</strong> <span id="roleDisplay"></span>
+  <button onclick="copyToken()" style="margin-left:10px;padding:2px 10px;font-size:0.85em;border:1px solid #86efac;border-radius:4px;background:#fff;cursor:pointer">Copy</button>
+</div>
+
+<p style="margin-bottom:20px;color:#6b7280;font-size:0.9em">
+  Click any <strong>FR</strong> to expand. Each requirement links to the actual backend endpoint(s), acceptance criteria from the documentation, request/response schemas, and test cases for manual verification. Use <a href="/docs" style="color:#2563eb">/docs</a> (Swagger UI) to execute requests directly.
+</p>
+
+<div id="app"></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const baseInput = document.getElementById("loginBaseUrl");
+  if (baseInput) {
+    if (window.location.protocol.startsWith("http")) {
+      baseInput.value = window.location.origin;
+    } else {
+      baseInput.value = "http://localhost:3000";
+    }
+  }
+});
+
+const data = [
+  {
+    id: "FR1", desc: "User Account &amp; Role Management", priority: "High", actor: "Super Admin",
+    docRequirement: "The system shall allow the Super Admin to add, update, and delete user accounts with specific roles (Super Admin, Barangay Official, Resident).",
+    acceptance: [
+      "Only Super Admin can access User Management",
+      "'Add New User' button opens a form with Username, Role, Password, Confirm Password",
+      "Validation ensures all required fields are filled and password matches confirmation",
+      "'Edit' option updates username and/or role",
+      "'Delete' shows confirmation prompt before removing the user"
+    ],
+    endpoints: [
+      { method: "GET", path: "/api/users?role=&search=&page=1&limit=20", auth: "super_admin", desc: "List users (with optional role/search filter)", response: "[{user_id, username, roles, is_active, created_at}]" },
+      { method: "POST", path: "/api/users", auth: "super_admin", desc: "Create a new user", body: {username:"juan_delacruz", password:"securepass123", roles:"official"}, response: "201 — {user_id, username, roles, ...}" },
+      { method: "PUT", path: "/api/users/{user_id}", auth: "super_admin", desc: "Update user (partial)", body: {username:"updated_name", roles:"resident"}, response: "{user_id, username, roles, ...}" },
+      { method: "DELETE", path: "/api/users/{user_id}", auth: "super_admin", desc: "Delete a user", response: "204 No Content" }
+    ],
+    tests: [
+      "GET /api/users returns 200 with user list",
+      "POST /api/users creates user, returns 201 with user object",
+      "POST with duplicate username returns 400",
+      "PUT /api/users/{id} updates fields, returns 200",
+      "DELETE /api/users/{id} returns 204",
+      "Non-admin (official/resident) GET /api/users returns 403"
+    ]
+  },
+  {
+    id: "FR2", desc: "Resident Records Management", priority: "High", actor: "Super Admin",
+    docRequirement: "The system shall allow the Super Admin to add, update, and delete resident records with demographic and contact information.",
+    acceptance: [
+      "Only Super Admin can access Residents Records",
+      "'Add Resident' form includes Name, Address, Birthday, Contact Info",
+      "System prevents duplicate residents based on Full Name + Birthday",
+      "'Edit' option updates resident information",
+      "'Delete' shows confirmation prompt"
+    ],
+    endpoints: [
+      { method: "GET", path: "/api/residents?search=&page=1&limit=20", auth: "super_admin", desc: "List/search residents", response: "[{resident_id, user_id, first_name, last_name, ...}]" },
+      { method: "POST", path: "/api/residents", auth: "super_admin", desc: "Create resident (auto-creates User with role=resident)", body: {username:"maria_santos", password:"pass123", first_name:"Maria", last_name:"Santos", birthday:"1995-05-15", gender:"Female", address:"Barangay 133, Tondo", contact:"09171234567", civil_status:"Single", email:"maria@example.com"}, response: "201 — {resident_id, first_name, ...}" },
+      { method: "PUT", path: "/api/residents/{resident_id}", auth: "super_admin", desc: "Update resident info (partial)", body: {first_name:"Maria Clara", address:"Barangay 133, Zone 2"}, response: "{resident_id, first_name, ...}" },
+      { method: "DELETE", path: "/api/residents/{resident_id}", auth: "super_admin", desc: "Delete resident + linked User", response: "204 No Content" }
+    ],
+    tests: [
+      "GET /api/residents returns 200 with list",
+      "POST /api/residents creates resident + user, returns 201",
+      "POST same name+birthday returns 400",
+      "PUT /api/residents/{id} updates fields, returns 200",
+      "DELETE /api/residents/{id} returns 204",
+      "GET /api/residents?search=Name filters results"
+    ]
+  },
+  {
+    id: "FR3", desc: "Barangay Official Login", priority: "High", actor: "Barangay Official",
+    docRequirement: "The system shall allow Barangay Officials to log in securely using authorized credentials with proper validation and error handling.",
+    acceptance: [
+      "Login page with Username and Password fields and a Login button",
+      "Correct credentials → redirect to Official Dashboard",
+      "Incorrect credentials → error message 'Invalid username or password'",
+      "Empty fields → validation message prompting user to fill in"
+    ],
+    endpoints: [
+      { method: "POST", path: "/api/auth/login", auth: "none", desc: "Login with credentials", body: {username:"admin", password:"admin123"}, response: "{access_token, token_type:'bearer', role, user_id, expires_in}" },
+      { method: "GET", path: "/api/auth/me", auth: "any", desc: "Get current user info from token", response: "{user_id, username, role, is_active}" }
+    ],
+    tests: [
+      "POST /api/auth/login with correct credentials returns 200 + access_token",
+      "POST /api/auth/login with wrong password returns 401",
+      "POST /api/auth/login with non-existent user returns 401",
+      "GET /api/auth/me with valid token returns user info",
+      "Official token cannot access super_admin-only routes (e.g. GET /api/users → 403)"
+    ]
+  },
+  {
+    id: "FR4", desc: "Announcement Management", priority: "High", actor: "Barangay Official",
+    docRequirement: "The system shall allow Barangay Officials to create, update, and delete barangay announcements with title, body, and publish status.",
+    acceptance: [
+      "Only logged-in Barangay Officials can access Manage Announcements",
+      "Interface to view all existing announcements with search/filter",
+      "'Create Announcement' form with Title and Body/Content fields",
+      "'Edit' option updates the announcement",
+      "'Delete' shows confirmation prompt"
+    ],
+    endpoints: [
+      { method: "GET", path: "/api/announcements?search=&published_only=false&page=1&limit=20", auth: "super_admin|official|resident", desc: "List announcements (residents see published only)", response: "[{announcement_id, title, content, date_posted, is_published, ...}]" },
+      { method: "POST", path: "/api/announcements", auth: "super_admin|official", desc: "Create announcement", body: {title:"Water Interruption Advisory", content:"There will be a water service interruption on March 15 from 8AM to 5PM.", is_published:true}, response: "201 — {announcement_id, title, content, ...}" },
+      { method: "PUT", path: "/api/announcements/{announcement_id}", auth: "super_admin|official", desc: "Update announcement", body: {title:"Updated: Water Interruption Rescheduled", content:"The water interruption has been moved to March 16."}, response: "{announcement_id, title, content, ...}" },
+      { method: "DELETE", path: "/api/announcements/{announcement_id}", auth: "super_admin|official", desc: "Delete/archive announcement", response: "204 No Content" }
+    ],
+    tests: [
+      "GET /api/announcements returns 200",
+      "POST creates announcement, returns 201",
+      "PUT updates announcement, returns 200",
+      "DELETE removes announcement, returns 204",
+      "Resident POST /api/announcements returns 403",
+      "GET ?published_only=true filters drafts",
+      "GET ?search=keyword filters by title"
+    ]
+  },
+  {
+    id: "FR5", desc: "View Resident History &amp; Feedback", priority: "Medium", actor: "Barangay Official",
+    docRequirement: "The system shall allow Barangay Officials to view resident submitted feedback and review their activity history.",
+    acceptance: [
+      "Only logged-in Officials can access Resident History and Feedback modules",
+      "Search function to find specific resident",
+      "View read-only log of resident history and feedback",
+      "Interface must be view-only — no edit/delete options"
+    ],
+    endpoints: [
+      { method: "GET", path: "/api/feedback?search=&page=1&limit=20", auth: "super_admin|official|resident", desc: "List feedback (officials see all; residents see own)", response: "[{feedback_id, created_by, subject, content, timestamp, ...}]" },
+      { method: "GET", path: "/api/feedback/{feedback_id}", auth: "super_admin|official|resident", desc: "Get single feedback detail", response: "{feedback_id, subject, content, ...}" },
+      { method: "GET", path: "/api/detection/logs", auth: "super_admin|official", desc: "View detection logs", response: "[{log_id, timestamp, confidence_score, camera_name, ...}]" }
+    ],
+    tests: [
+      "GET /api/feedback (as official) returns all feedback",
+      "GET /api/feedback/{id} returns feedback details",
+      "Official DELETE /api/feedback/{id} returns 403",
+      "GET /api/detection/logs returns detection history"
+    ]
+  },
+  {
+    id: "FR6", desc: "Garbage Truck Detection via CCTV", priority: "High", actor: "System (RPi)",
+    docRequirement: "The system shall detect garbage trucks through CCTV camera input using image processing (YOLOv8n-TFLite on Raspberry Pi 5).",
+    acceptance: [
+      "System connects to CCTV via RTSP stream",
+      "Video downscaled to 320x320 before inference",
+      "Frame skipping to keep CPU usage manageable",
+      "INT8-quantized TFLite model achieves 85-90% accuracy",
+      "False positive rate ≤ 1 per hour (daylight/clear weather)",
+      "Confirmed detection triggers HTTP API call to main server"
+    ],
+    endpoints: [
+      { method: "POST", path: "/api/detection/event", auth: "none (public)", desc: "RPi sends detection event to server", body: {camera_id:1, camera_name:"Cam 1 - Delivery Area", confidence:0.92, image_path:"/snapshots/detection_001.jpg"}, response: "{log_id, confidence_score, notification_status:'pending', ...}" },
+      { method: "POST", path: "/api/detection/truck-status", auth: "none (public)", desc: "RPi sends truck present/departed event", body: {event_type:"truck_present", camera_id:1, camera_name:"Cam 1 - Delivery Area", confidence:0.88}, response: "{status:'ok', event_type:'truck_present', log_id, notification_id}" },
+      { method: "GET", path: "/api/detection/logs", auth: "super_admin|official", desc: "Fetch all detection logs", response: "[{log_id, timestamp, confidence_score, camera_name, ...}]" },
+      { method: "GET", path: "/api/detection/status", auth: "none (public)", desc: "Get latest detection status", response: "{status, last_detection: {log_id, camera_name, confidence, timestamp}}" }
+    ],
+    tests: [
+      "POST /api/detection/event creates log, returns detection object",
+      "POST /api/detection/truck-status creates log + notification, returns IDs",
+      "GET /api/detection/status returns latest detection",
+      "GET /api/detection/logs returns history"
+    ]
+  },
+  {
+    id: "FR7", desc: "Auto Notifications on Detection", priority: "High", actor: "System",
+    docRequirement: "The system shall automatically send real-time notifications to residents upon garbage truck detection.",
+    acceptance: [
+      "Auto-triggered only by successful FR6 detection event",
+      "Identifies correct resident group based on camera location",
+      "Notification message contains clear predefined content",
+      "Notifications sent within 60 seconds of detection",
+      "All sent/failed notifications logged with timestamp and recipient group"
+    ],
+    endpoints: [
+      { method: "POST", path: "/api/detection/truck-status", auth: "none", desc: "Truck detection triggers notification (see FR6)", body: {event_type:"truck_present", camera_id:2, camera_name:"Cam 2 - Side Loading", confidence:0.90}, response: "{status:'ok', event_type:'truck_present', log_id, notification_id}" }
+    ],
+    tests: [
+      "POST /api/detection/truck-status returns status 'sent' and notification_id",
+      "Notification record is created in tbl_Notifications"
+    ]
+  },
+  {
+    id: "FR8", desc: "Resident Login", priority: "High", actor: "Resident",
+    docRequirement: "The system shall allow residents to log in using credentials provided by the barangay.",
+    acceptance: [
+      "Login page with Username and Password fields",
+      "Correct credentials redirect to Resident Portal",
+      "Incorrect credentials show error message",
+      "Empty fields show validation message"
+    ],
+    endpoints: [
+      { method: "POST", path: "/api/auth/login", auth: "none", desc: "Resident login (same endpoint, different role)", body: {username:"resident_username", password:"resident_password"}, response: "{access_token, token_type, role:'resident', user_id, expires_in}" }
+    ],
+    tests: [
+      "POST /api/auth/login with resident credentials returns access_token with role='resident'",
+      "GET /api/auth/me with resident token returns role='resident'",
+      "Resident token cannot access admin-only routes → 403"
+    ]
+  },
+  {
+    id: "FR9", desc: "View Announcements &amp; Garbage Notifications", priority: "High", actor: "Resident",
+    docRequirement: "The system shall allow residents to view barangay announcements and garbage collection notifications.",
+    acceptance: [
+      "Only logged-in resident can view Announcements and Notifications pages",
+      "Announcements displayed newest to oldest",
+      "Garbage notifications show most recent/active",
+      "View-only — resident cannot edit/delete"
+    ],
+    endpoints: [
+      { method: "GET", path: "/api/announcements?published_only=true", auth: "resident", desc: "View published announcements (newest first)", response: "[{announcement_id, title, content, date_posted, ...}]" },
+      { method: "GET", path: "/api/detection/status", auth: "resident", desc: "View garbage detection status", response: "{status, last_detection: {...}}" }
+    ],
+    tests: [
+      "GET /api/announcements?published_only=true as resident returns published announcements",
+      "Results ordered by date_posted DESC",
+      "Resident PUT/DELETE /api/announcements/{id} returns 403"
+    ]
+  },
+  {
+    id: "FR10", desc: "Submit Feedback", priority: "Medium", actor: "Resident",
+    docRequirement: "The system shall allow residents to fill out and send feedback forms to barangay officials.",
+    acceptance: [
+      "Only logged-in resident can access Send Feedback",
+      "Form with Subject and Feedback Message fields",
+      "Feedback Message must not be empty",
+      "Success confirmation on submit",
+      "Duplicate prevention: identical content within 5 minutes is blocked (spam prevention)"
+    ],
+    endpoints: [
+      { method: "POST", path: "/api/feedback", auth: "resident", desc: "Submit feedback", body: {subject:"Noise Complaint", content:"There is loud construction noise every night in our area. Please address."}, response: "201 — {feedback_id, subject, content, timestamp, ...}" },
+      { method: "GET", path: "/api/feedback", auth: "resident", desc: "View own feedback", response: "[{feedback_id, subject, content, timestamp, ...}]" }
+    ],
+    tests: [
+      "POST /api/feedback as resident returns 201 with feedback object",
+      "POST with empty content returns 422",
+      "POST duplicate content within 5 min returns 429",
+      "GET /api/feedback as resident returns only own feedback",
+      "Unauthenticated POST /api/feedback returns 403"
+    ]
+  },
+  {
+    id: "FR11", desc: "Super Admin View All Feedback &amp; Activity", priority: "Medium", actor: "Super Admin",
+    docRequirement: "The system shall allow the Super Admin to view all residents' feedback and activity history.",
+    acceptance: [
+      "Only Super Admin can access Resident Activity and Feedback logs",
+      "Central dashboard showing all feedback from all residents",
+      "Search/filter by date range or activity type",
+      "View-only — no edit/delete for logs"
+    ],
+    endpoints: [
+      { method: "GET", path: "/api/feedback?search=&page=1&limit=20", auth: "super_admin", desc: "View all feedback from all residents", response: "[{feedback_id, created_by, subject, content, timestamp, ...}]" },
+      { method: "GET", path: "/api/activity/all?search=&activity_type=&page=1&limit=50", auth: "super_admin", desc: "View all activity logs", response: "[{log_id, user_id, action_type, description, timestamp, ...}]" }
+    ],
+    tests: [
+      "Super Admin GET /api/feedback sees all residents' feedback",
+      "Super Admin GET /api/activity/all returns all activity logs",
+      "Super Admin can filter by activity_type"
+    ]
+  },
+  {
+    id: "FR12", desc: "Push Notifications for Announcements", priority: "Medium", actor: "System",
+    docRequirement: "The system shall send push notifications to residents about new announcements automatically.",
+    acceptance: [
+      "Auto-triggered when Barangay Official publishes a new announcement (FR4)",
+      "Identifies correct resident group to notify",
+      "Message content: 'Barangay Announcement: [Title]'",
+      "Notifications sent within 60 seconds",
+      "All notifications logged with timestamp and recipient"
+    ],
+    endpoints: [
+      { method: "POST", path: "/api/announcements", auth: "super_admin|official", desc: "Creating an announcement triggers notification dispatch", body: {title:"Barangay Meeting", content:"General assembly this Saturday at 9AM.", is_published:true}, response: "201 — {announcement_id, title, ...}" }
+    ],
+    tests: [
+      "POST /api/announcements as official creates announcement record",
+      "Notification record is generated for the announcement"
+    ]
+  },
+  {
+    id: "FR13", desc: "Centralized Database", priority: "High", actor: "System",
+    docRequirement: "The system shall store and retrieve all system data in a centralized MySQL (MariaDB) database server.",
+    acceptance: [
+      "All created data saved to central MySQL database",
+      "All displayed data fetched from central MySQL database",
+      "Data persists after logout or server restart"
+    ],
+    endpoints: [
+      { method: "GET", path: "/api/dashboard/stats", auth: "any", desc: "Dashboard stats from database", response: "{user_count, resident_count, pending_feedback, total_detections}" },
+      { method: "GET", path: "/api/settings", auth: "super_admin", desc: "System settings from database", response: "{config_key: config_value, ...}" }
+    ],
+    tests: [
+      "GET /api/dashboard/stats returns aggregated counts from DB",
+      "Data persists across requests (create entity → list it → verify it exists)",
+      "GET /api/settings returns stored configuration"
+    ]
+  },
+  {
+    id: "FR14", desc: "Summary Reports", priority: "Low", actor: "Barangay Official",
+    docRequirement: "The system shall allow officials to create and view summary reports of announcements and resident activities.",
+    acceptance: [
+      "Officials can access the Reports dashboard",
+      "Reports reflect data from MySQL database",
+      "Can generate PDF report of announcements within selected date range"
+    ],
+    endpoints: [
+      { method: "GET", path: "/api/reports", auth: "super_admin|official", desc: "List generated reports", response: "[{report_id, title, report_type, file_format, file_path, created_at, ...}]" },
+      { method: "POST", path: "/api/reports/generate", auth: "super_admin|official", desc: "Generate a new report", body: {title:"Monthly Announcement Report", report_type:"announcement", start_date:"2025-01-01", end_date:"2025-12-31", file_format:"pdf"}, response: "{report_id, title, report_type, ...}" }
+    ],
+    tests: [
+      "GET /api/reports returns 200 with report list",
+      "POST /api/reports/generate creates a report, returns 200",
+      "Resident POST /api/reports/generate returns 403"
+    ]
+  },
+  {
+    id: "FR15", desc: "Web-based Portal (Responsive)", priority: "Medium", actor: "All Users",
+    docRequirement: "The system shall display all information in a web-based portal accessible via desktop or mobile devices using React (frontend) and Python API (backend).",
+    acceptance: [
+      "Accessible via standard web browsers (Chrome, Safari, Firefox, Edge)",
+      "Fully functional on desktop/laptop resolutions",
+      "Layout adapts to mobile screens automatically",
+      "No horizontal scrolling required on mobile",
+      "All pages load in under 3 seconds",
+      "Admin dashboards load in under 5 seconds"
+    ],
+    endpoints: [
+      { method: "GET", path: "/", auth: "none", desc: "Backend root health check", response: "{message, docs}" },
+      { method: "GET", path: "/docs", auth: "none", desc: "Swagger UI documentation" },
+      { method: "GET", path: "/test.html", auth: "none", desc: "This reference document" }
+    ],
+    tests: [
+      "GET / returns 200 with backend status",
+      "GET /docs loads Swagger UI",
+      "GET /test.html loads this document",
+      "Frontend served via React dev server (localhost:5173) or built files"
+    ]
+  },
+  {
+    id: "FR16", desc: "Resident Activity History", priority: "Medium", actor: "Resident",
+    docRequirement: "The system shall allow residents to view a log of their personal activity history.",
+    acceptance: [
+      "Only logged-in resident can access 'My Activity History' page",
+      "Resident can only view their own history, not others'",
+      "Chronological read-only list with Date/Time, Activity Type, Status",
+      "Sort by date (newest first) and filter by Activity Type",
+      "View-only — no edit/delete options"
+    ],
+    endpoints: [
+      { method: "GET", path: "/api/activity?page=1&limit=20", auth: "resident", desc: "View own activity history (from AuditLogs filtered by user_id)", response: "[{log_id, action_type, description, timestamp, ...}]" },
+      { method: "GET", path: "/api/activity/all", auth: "super_admin", desc: "View all users' activity (Super Admin only)", response: "[{log_id, user_id, action_type, description, timestamp, ...}]" }
+    ],
+    tests: [
+      "GET /api/activity as resident returns own activity log",
+      "GET /api/activity/all as resident returns 403",
+      "GET /api/activity/all as super_admin returns all activity",
+      "Activity entries include action_type, description, timestamp"
+    ]
+  }
+];
+
+// Non-Functional Requirements summary
+const nfrs = [
+  "NFR1 — Performance: pages load &lt;3s, admin dashboards &lt;5s",
+  "NFR2 — Real-Time: detection + notification within 90s",
+  "NFR3 — Usability: new user logs in and submits feedback in &lt;90s",
+  "NFR4 — Reliability: 24/7 operation of PC Server + RPi Sensor",
+  "NFR5 — Security: HTTPS via Cloudflare Tunnel, bcrypt password hashing",
+  "NFR6 — Maintainability: docstrings, linting",
+  "NFR7 — Scalability: supports 100 simultaneous users",
+  "NFR8 — Availability: 24/7 accessibility",
+  "NFR9 — Compatibility: Chrome, Edge, Firefox, Safari + responsive",
+  "NFR10 — Data Integrity: no duplicate/lost data",
+  "NFR11 — Backup: daily mysqldump",
+  "NFR12 — Accessibility: WCAG 2.1 Level AA",
+  "NFR13 — Audit Trail: log all admin actions",
+  "NFR14 — Portability: RPi OS + Windows/Linux PC",
+  "NFR15 — Compliance: Data Privacy Act of 2012 (RA 10173)"
+];
+
+function render() {
+  const app = document.getElementById("app");
+  data.forEach(fr => {
+    const div = document.createElement("div");
+    div.className = "fr";
+    div.innerHTML = `
+      <div class="fr-header" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span class="fr-id">${fr.id}</span>
+        <span class="fr-desc">${fr.desc}</span>
+        <span class="fr-actor">${fr.actor}</span>
+        <span class="fr-priority pri-${fr.priority.toLowerCase()}">${fr.priority}</span>
+      </div>
+      <div class="fr-body">
+        <p style="margin:16px 0 8px;font-size:0.9em"><strong>Documentation:</strong> ${fr.docRequirement}</p>
+        <div class="acceptance">
+          <h4>Acceptance Criteria</h4>
+          <ul>${fr.acceptance.map(a => `<li>${a}</li>`).join("")}</ul>
+        </div>
+        <table class="endpoint-table">
+          <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Request Body</th><th>Response</th><th>Test</th></tr>
+          ${fr.endpoints.map((ep, ei) => {
+            const epId = fr.id + "-ep" + ei;
+            const bodyPreview = ep.body ? JSON.stringify(ep.body, null, 2) : "";
+            return `
+            <tr>
+              <td><span class="method m-${ep.method}">${ep.method}</span></td>
+              <td><span class="path">${ep.path}</span><br><span style="font-size:0.82em;color:#6b7280">${ep.desc}</span></td>
+              <td style="font-size:0.82em;color:#6b7280">${ep.auth}</td>
+              <td>${ep.body ? `<pre style="margin:0;font-size:0.78em;opacity:0.6" id="body-${epId}">${bodyPreview}</pre><textarea class="test-body-edit" id="edit-${epId}" style="display:block;min-height:70px" placeholder='{&#10;  "field1": "value1",&#10;  "field2": "value2"&#10;}'></textarea>` : '<span style="color:#9ca3af;font-size:0.85em">—</span>'}</td>
+              <td style="font-size:0.82em;font-family:monospace;color:#374151">${ep.response}</td>
+              <td><button class="test-btn" style="background:#2563eb;color:#fff" onclick="testEndpoint('${fr.id}-ep${ei}','${ep.method}','${ep.path.replace(/'/g, "\\'")}', '${ep.auth || ''}')" id="btn-${epId}">Send</button></td>
+            </tr>
+            <tr id="resprow-${epId}" style="display:none">
+              <td colspan="6" style="padding:4px 12px 12px"><div class="test-resp" id="resp-${epId}"></div></td>
+            </tr>`;
+          }).join("")}
+        </table>
+        <div style="margin-top:12px">
+          <strong style="font-size:0.88em;color:#374151">Manual Test Cases:</strong>
+          <div class="tc-grid">
+            ${fr.tests.map(t => `
+              <div class="tc-card">
+                <div class="tc-title">${t}</div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      </div>
+    `;
+    app.appendChild(div);
+  });
+
+  // NFR section
+  const nfrDiv = document.createElement("div");
+  nfrDiv.className = "fr";
+  nfrDiv.innerHTML = `
+    <div class="fr-header" onclick="this.nextElementSibling.classList.toggle('open')">
+      <span class="fr-id" style="color:#6b7280">NFR</span>
+      <span class="fr-desc">Non-Functional Requirements (15)</span>
+      <span class="fr-actor">System</span>
+      <span class="fr-priority pri-medium">—</span>
+    </div>
+    <div class="fr-body">
+      <div class="tc-grid" style="margin-top:16px">
+        ${nfrs.map(n => `<div class="tc-card"><div class="tc-title">${n}</div></div>`).join("")}
+      </div>
+    </div>
+  `;
+  app.appendChild(nfrDiv);
+
+  // DB Schema section
+  const dbDiv = document.createElement("div");
+  dbDiv.className = "fr";
+  dbDiv.innerHTML = `
+    <div class="fr-header" onclick="this.nextElementSibling.classList.toggle('open')">
+      <span class="fr-id" style="color:#6b7280">DB</span>
+      <span class="fr-desc">Database Schema (11 tables)</span>
+      <span class="fr-actor">Backend</span>
+      <span class="fr-priority pri-low">Reference</span>
+    </div>
+    <div class="fr-body">
+      <table class="endpoint-table">
+        <tr><th>Table</th><th>Columns</th><th>Description</th></tr>
+        <tr><td><span class="code">tbl_Users</span></td><td>user_id, username, password, roles (enum), is_active, created_at, updated_at</td><td>Central authentication — all users</td></tr>
+        <tr><td><span class="code">tbl_Admin</span></td><td>admin_id, user_id (FK), first_name, middle_name, last_name, birthday, gender, contact</td><td>Super Admin profiles</td></tr>
+        <tr><td><span class="code">tbl_Official</span></td><td>official_id, user_id (FK), first_name, middle_name, last_name, birthday, gender, contact</td><td>Barangay Official profiles</td></tr>
+        <tr><td><span class="code">tbl_Residents</span></td><td>resident_id, user_id (FK), first_name, middle_name, last_name, birthday, gender, address, contact, civil_status, email, fcm_token</td><td>Resident profiles</td></tr>
+        <tr><td><span class="code">tbl_DetectionLog</span></td><td>log_id, timestamp, confidence_score, image_path, notification_status, camera_id, camera_name</td><td>AI detection events</td></tr>
+        <tr><td><span class="code">tbl_Notifications</span></td><td>notification_id, log_id (FK), notification_type, title, message, status, sent_at, target_group, created_at</td><td>Push notification records</td></tr>
+        <tr><td><span class="code">tbl_Announcement</span></td><td>announcement_id, created_by (FK), title, content, date_posted, is_published, attachment_path</td><td>Barangay announcements</td></tr>
+        <tr><td><span class="code">tbl_Feedback</span></td><td>feedback_id, created_by (FK), subject, content, timestamp, attachment_path</td><td>Resident feedback submissions</td></tr>
+        <tr><td><span class="code">tbl_Reports</span></td><td>report_id, title, file_format, report_type, start_date, end_date, file_path, created_by (FK), created_at</td><td>Generated summary reports</td></tr>
+        <tr><td><span class="code">tbl_SystemSettings</span></td><td>system_id, updated_by (FK), config_key (unique), config_value, updated_at</td><td>System configuration</td></tr>
+        <tr><td><span class="code">tbl_AuditLogs</span></td><td>log_id, user_id (FK), action_type, target_table, target_id, description, timestamp, ip_address</td><td>Immutable audit trail</td></tr>
+      </table>
+    </div>
+  `;
+  app.appendChild(dbDiv);
+}
+render();
+
+// Login functions
+let currentToken = null;
+let currentRole = null;
+
+async function doLogin() {
+  const base = document.getElementById("loginBaseUrl").value.trim();
+  const username = document.getElementById("loginUser").value.trim();
+  const password = document.getElementById("loginPass").value;
+  const statusEl = document.getElementById("loginStatus");
+
+  if (!base || !username || !password) {
+    statusEl.textContent = "Fill in all fields";
+    return;
+  }
+
+  statusEl.innerHTML = "Logging in...";
+  try {
+    const res = await fetch(base + "/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      statusEl.textContent = "Login failed: " + (data.detail || res.status);
+      return;
+    }
+    currentToken = data.access_token;
+    currentRole = data.role;
+    document.getElementById("tokenDisplay").textContent = currentToken;
+    document.getElementById("roleDisplay").textContent = currentRole + " (user_id: " + data.user_id + ")";
+    document.getElementById("tokenBar").style.display = "block";
+    statusEl.innerHTML = "<strong style='color:#059669'>Logged in</strong> as <strong>" + username + "</strong> — role: " + currentRole;
+  } catch(e) {
+    statusEl.textContent = "Error: " + e.message;
+  }
+}
+
+async function testEndpoint(epId, method, path, auth) {
+  const base = document.getElementById("loginBaseUrl").value.trim();
+  const btn = document.getElementById("btn-" + epId);
+  const respEl = document.getElementById("resp-" + epId);
+  const rowEl = document.getElementById("resprow-" + epId);
+
+  const requiresAuth = auth && auth !== "none" && !auth.includes("none");
+  if (requiresAuth && !currentToken) {
+    respEl.innerHTML = '<span class="status-line s-4xx">No token</span>\nLog in first using the Login bar above.';
+    respEl.style.display = "block";
+    rowEl.style.display = "table-row";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Sending...";
+  respEl.style.display = "block";
+  rowEl.style.display = "table-row";
+  respEl.innerHTML = "Sending request...";
+
+  // Build URL — substitute {user_id}, {resident_id}, etc with actual IDs if available
+  let url = base + path;
+  url = url.replace(/\{user_id\}/g, "1").replace(/\{resident_id\}/g, "1").replace(/\{announcement_id\}/g, "1").replace(/\{feedback_id\}/g, "1");
+
+  // For POST/PUT, get the body from the editable textarea
+  let body = null;
+  const editEl = document.getElementById("edit-" + epId);
+  if (editEl) {
+    const val = editEl.value.trim();
+    if (val) {
+      try {
+        body = JSON.parse(val);
+      } catch(e) {
+        respEl.innerHTML = '<span class="status-line s-4xx">Invalid JSON</span>\n' + e.message;
+        btn.disabled = false;
+        btn.textContent = "Send";
+        return;
+      }
+    } else {
+      // Find the endpoint object in data
+      const parts = epId.split("-ep");
+      const frId = parts[0];
+      const epIdx = parseInt(parts[1], 10);
+      const fr = data.find(f => f.id === frId);
+      if (fr && fr.endpoints[epIdx]) {
+        body = fr.endpoints[epIdx].body || null;
+      }
+    }
+  }
+
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (currentToken) {
+      headers["Authorization"] = "Bearer " + currentToken;
+    }
+    const opts = { method, headers };
+    if (body && (method === "POST" || method === "PUT")) opts.body = JSON.stringify(body);
+    const start = performance.now();
+    const res = await fetch(url, opts);
+    const elapsed = ((performance.now() - start) / 1000).toFixed(2);
+    let text = await res.text();
+    let pretty = text;
+    try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch(e) {}
+
+    const statusClass = res.status < 300 ? "s-2xx" : res.status < 500 ? "s-4xx" : "s-5xx";
+    respEl.innerHTML = `<span class="status-line ${statusClass}">${res.status} ${res.statusText}</span> <span style="color:#6b7280;font-size:0.85em">${elapsed}s</span>\n\n` + pretty;
+    respEl.style.display = "block";
+  } catch(e) {
+    respEl.innerHTML = '<span class="status-line s-5xx">Error</span>\n' + e.message;
+  }
+
+  btn.disabled = false;
+  btn.textContent = "Send";
+}
+
+function toggleBodyEdit(epId) {
+  const pre = document.getElementById("body-" + epId);
+  const edit = document.getElementById("edit-" + epId);
+  if (pre.style.display === "none") {
+    pre.style.display = "block";
+    edit.style.display = "none";
+  } else {
+    pre.style.display = "none";
+    edit.style.display = "block";
+  }
+}
+
+function copyToken() {
+  navigator.clipboard.writeText(currentToken).then(() => {
+    const btn = event.target;
+    btn.textContent = "Copied!";
+    setTimeout(() => btn.textContent = "Copy", 2000);
+  });
+}
+</script>
+</body>
+</html>
