@@ -1,207 +1,333 @@
-import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../services/api_service.dart';
-import '../providers/auth_provider.dart';
-import '../providers/announcement_provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'user_management_view.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({Key? key}) : super(key: key);
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  bool _truckDetected = false;
+  bool _sidebarVisible = true;
+  String _currentRoute = '/dashboard';
+  String _adminName = "User"; 
+  
+  int _statUsers = 0;
+  int _statResidents = 0;
+  int _statFeedback = 0;
+  bool _isLoadingStats = true;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AnnouncementProvider>().fetchAnnouncements();
-    });
-    _pollTruckStatus();
+    _loadSessionAndFetchStats();
   }
 
-  @override
-  void dispose() {
-    _truckTimer?.cancel();
-    super.dispose();
+  Future<void> _loadSessionAndFetchStats() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedName = prefs.getString('username');
+    final token = prefs.getString('token');
+
+    if (token == null || savedName == null) {
+      if (mounted) Navigator.pushReplacementNamed(context, '/login');
+      return;
+    }
+
+    setState(() {
+      _adminName = savedName; 
+    });
+
+    try {
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.get(
+        Uri.parse('http://192.168.1.150:3000/api/dashboard/stats'), 
+        headers: headers
+      );
+
+      if (response.statusCode == 200 && mounted) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _statUsers = data['user_count'] ?? 0;
+          _statResidents = data['resident_count'] ?? 0;
+          _statFeedback = data['pending_feedback'] ?? 0;
+          _isLoadingStats = false;
+        });
+      } else {
+        if (mounted) setState(() => _isLoadingStats = false);
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch dashboard statistics: $e");
+      if (mounted) setState(() => _isLoadingStats = false);
+    }
   }
 
-  Timer? _truckTimer;
-
-  void _pollTruckStatus() {
-    _truckTimer = Timer.periodic(const Duration(seconds: 15), (_) async {
-      try {
-        final data = await ApiService.get('/detection/status');
-        if (!mounted) return;
-        final detected = data['status'] == 'active';
-        if (detected && !_truckDetected) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Garbage truck detected in your area!'),
-              duration: Duration(seconds: 4),
-            ),
-          );
-        }
-        setState(() => _truckDetected = detected);
-      } catch (_) {}
-    });
+  Future<void> _handleLogout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    if (mounted) Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthProvider>().user;
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Barangay 133'),
-        actions: [
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined),
-                onPressed: () => Navigator.pushNamed(context, '/garbage-alerts'),
-              ),
-              if (_truckDetected)
-                Positioned(
-                  right: 6,
-                  top: 6,
-                  child: Container(
-                    width: 10,
-                    height: 10,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
+      body: Container(
+        height: MediaQuery.of(context).size.height,
+        width: MediaQuery.of(context).size.width,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/barangay.jpg'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Row(
+          children: [
+            if (_sidebarVisible) _buildSidebar(),
+            Expanded(
+              child: Container(
+                color: Colors.transparent, 
+                child: Column(
+                  children: [
+                    _buildAdminHeader(),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 40),
+                        child: _buildDynamicBodyContent(),
+                      ),
                     ),
-                  ),
+                    _buildFooter(),
+                  ],
                 ),
-            ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebar() {
+    return Container(
+      width: 280,
+      decoration: const BoxDecoration(
+        color: Color(0xFFF5F5F5),
+        border: Border(right: BorderSide(color: Colors.grey, width: 1)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Colors.black, width: 1)),
+            ),
+            child: Column(
+              children: [
+                Image.asset(
+                  'assets/logo.png', 
+                  width: 80, 
+                  height: 80,
+                  errorBuilder: (c, e, s) => const Icon(Icons.location_city, size: 60, color: Colors.black),
+                ),
+                const Text(
+                  'BARANGAY 133',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black, letterSpacing: 0.5),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildSidebarNavLink('Dashboard', '/dashboard'),
+                _buildSidebarNavLink('User Management', '/user-management'),
+                _buildSidebarNavLink('Residents Record', '/residents-record'),
+                _buildSidebarNavLink('Feedback', '/feedback'),
+                _buildSidebarNavLink('System Settings', '/system-settings'),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 30),
+            child: SizedBox(
+              width: 180,
+              height: 40,
+              child: ElevatedButton(
+                onPressed: _handleLogout,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  elevation: 2,
+                ),
+                child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              ),
+            ),
           ),
         ],
       ),
-      drawer: _buildDrawer(context),
-      body: RefreshIndicator(
-        onRefresh: () => context.read<AnnouncementProvider>().fetchAnnouncements(),
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Welcome! ${user?.username ?? 'Resident'}',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
+    );
+  }
 
-              Consumer<AnnouncementProvider>(
-                builder: (ctx, ap, child) {
-                  if (ap.loading) return const Center(child: CircularProgressIndicator());
-                  if (ap.announcements.isEmpty) {
-                    return const Card(
-                      child: Padding(padding: EdgeInsets.all(24), child: Text('No announcements yet')),
-                    );
-                  }
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Latest Announcements', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
-                      ...ap.announcements.take(3).map((a) => Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              title: Text(a.title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                              subtitle: Text(a.content, maxLines: 2, overflow: TextOverflow.ellipsis),
-                              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                              onTap: () => Navigator.pushNamed(context, '/announcement-detail', arguments: a),
-                            ),
-                          )),
-                      if (ap.announcements.length > 3)
-                        TextButton(
-                          onPressed: () => Navigator.pushNamed(context, '/announcements'),
-                          child: const Text('View all announcements'),
-                        ),
-                    ],
-                  );
-                },
-              ),
-
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 16),
-
-              Card(
-                color: _truckDetected ? Colors.orange[50] : Colors.green[50],
-                child: ListTile(
-                  leading: Icon(Icons.delete_outline, color: _truckDetected ? Colors.orange : Colors.green),
-                  title: const Text('Garbage Collection'),
-                  subtitle: Text(_truckDetected ? 'Truck in your area - tap to view' : 'Check collection status and history'),
-                  trailing: Icon(Icons.arrow_forward_ios, size: 16, color: _truckDetected ? Colors.orange : Colors.grey),
-                  onTap: () => Navigator.pushNamed(context, '/garbage-alerts'),
-                ),
-              ),
-            ],
+  Widget _buildSidebarNavLink(String title, String route) {
+    final bool isActive = _currentRoute == route;
+    return InkWell(
+      onTap: () => setState(() => _currentRoute = route),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.black : Colors.transparent,
+          border: const Border(
+            bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1),
+          ),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: isActive ? Colors.white : Colors.black,
+            backgroundColor: isActive ? Colors.black : Colors.transparent,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildDrawer(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
+  Widget _buildAdminHeader() {
+    return Container(
+      height: 70,
+      padding: const EdgeInsets.symmetric(horizontal: 30),
+      decoration: const BoxDecoration(
+        color: Colors.white, 
+        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          DrawerHeader(
-            decoration: BoxDecoration(color: Colors.blue[700]),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const CircleAvatar(
-                  radius: 28,
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.person, size: 32, color: Colors.blue),
-                ),
-                const SizedBox(height: 8),
-                Text('Welcome! ${auth.user?.username ?? ''}', style: const TextStyle(color: Colors.white, fontSize: 16)),
-              ],
-            ),
+          Row(
+            children: [
+              const Icon(Icons.account_circle, size: 40, color: Colors.black87),
+              const SizedBox(width: 10),
+              Text(
+                'Welcome! $_adminName',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+              ),
+            ],
           ),
-          _drawerItem(Icons.dashboard, 'Dashboard', () => Navigator.pop(context)),
-          _drawerItem(Icons.campaign, 'Announcements', () {
-            Navigator.pop(context);
-            Navigator.pushNamed(context, '/announcements');
-          }),
-          _drawerItem(Icons.delete_outline, 'Garbage Alerts', () {
-            Navigator.pop(context);
-            Navigator.pushNamed(context, '/garbage-alerts');
-          }),
-          _drawerItem(Icons.history, 'Activity History', () {
-            Navigator.pop(context);
-            Navigator.pushNamed(context, '/activity-history');
-          }),
-          _drawerItem(Icons.feedback, 'Feedback', () {
-            Navigator.pop(context);
-            Navigator.pushNamed(context, '/feedback');
-          }),
-          const Divider(),
-          _drawerItem(Icons.logout, 'Logout', () {
-            auth.logout();
-            Navigator.pushReplacementNamed(context, '/login');
-          }),
+          Row(
+            children: [
+              IconButton(icon: const Icon(Icons.notifications, size: 26, color: Colors.black87), onPressed: () {}),
+              const SizedBox(width: 15),
+              IconButton(
+                icon: const Icon(Icons.menu, size: 28, color: Colors.black87),
+                onPressed: () => setState(() => _sidebarVisible = !_sidebarVisible),
+              ),
+            ],
+          )
         ],
       ),
     );
   }
 
-  Widget _drawerItem(IconData icon, String label, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(label),
-      onTap: onTap,
+  Widget _buildDynamicBodyContent() {
+    switch (_currentRoute) {
+      case '/user-management':
+        // ✅ Added explicit horizontal safety constraint mapping
+        return const SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: UserManagementView(),
+        );
+      case '/residents-record':
+        return const Center(child: Text('[Residents Records Area]', style: TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.bold)));
+      case '/feedback':
+        return const Center(child: Text('[Feedback Inboxes Area]', style: TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.bold)));
+      case '/system-settings':
+        return const Center(child: Text('[System Settings Configuration Layer]', style: TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.bold)));
+      default:
+        return _buildDefaultDashboardView();
+    }
+  }
+
+  Widget _buildDefaultDashboardView() {
+    if (_isLoadingStats) {
+      return const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white)));
+    }
+
+    return Align(
+      alignment: Alignment.topLeft,
+      child: Wrap(
+        spacing: 30,
+        runSpacing: 30,
+        children: [
+          _buildStatCard('Number Of Users', _statUsers.toString()),
+          _buildStatCard('Number Of Residents', _statResidents.toString()),
+          _buildStatCard('Pending Feedback', _statFeedback.toString()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String title, String dynamicCount) {
+    return Container(
+      width: 340,
+      height: 200,
+      padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 25),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            offset: const Offset(0, 4),
+            blurRadius: 6,
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black54),
+          ),
+          const Spacer(),
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: Text(
+              dynamicCount,
+              style: const TextStyle(fontSize: 70, fontWeight: FontWeight.bold, color: Colors.black87, height: 1.0),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      decoration: const BoxDecoration(
+        color: Colors.white, 
+        border: Border(top: BorderSide(color: Color(0xFFE0E0E0), width: 1)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          const Text('barangay133@gmail.com', style: TextStyle(color: Colors.black54, fontSize: 13)),
+          const SizedBox(width: 40),
+          const Text('Contact: 02XXX-03XXX', style: TextStyle(color: Colors.black54, fontSize: 13)),
+        ],
+      ),
     );
   }
 }

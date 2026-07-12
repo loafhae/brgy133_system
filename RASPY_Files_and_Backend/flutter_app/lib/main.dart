@@ -35,11 +35,12 @@ class MyApp extends StatelessWidget {
           useMaterial3: true,
           appBarTheme: const AppBarTheme(centerTitle: true),
         ),
-        initialRoute: '/login',
+        // This tells the engine exactly where to look first when the web browser page triggers
+        initialRoute: '/login', 
         routes: {
-          '/login': (context) => const LoginScreen(),
+          '/login': (context) => LoginScreen(), 
           '/change-password': (context) => const ChangePasswordScreen(),
-          '/dashboard': (context) => const DashboardScreen(),
+          '/dashboard': (context) =>  DashboardScreen(),
           '/announcements': (context) => const AnnouncementsScreen(),
           '/announcement-detail': (context) => const AnnouncementDetailScreen(),
           '/garbage-alerts': (context) => const GarbageAlertsScreen(),

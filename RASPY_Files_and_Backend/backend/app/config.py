@@ -4,11 +4,11 @@ import json
 
 
 class Settings(BaseSettings):
-    DATABASE_HOST: str = "0.0.0.0"
+    DATABASE_HOST: str = "127.0.0.1"
     DATABASE_PORT: int = 3306
     DATABASE_USER: str = "root"
     DATABASE_PASSWORD: str = ""
-    DATABASE_NAME: str = "vision_trak"
+    DATABASE_NAME: str = "barangay133_db"
 
     SECRET_KEY: str = "change-me"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
-    CORS_ORIGINS: str = '["http://localhost:5173","http://localhost:3000"]'
+    CORS_ORIGINS: str = '["*"]'
 
     DETECTION_CONFIDENCE_THRESHOLD: float = 0.25
     NOTIFICATION_COOLDOWN_SECONDS: int = 300
