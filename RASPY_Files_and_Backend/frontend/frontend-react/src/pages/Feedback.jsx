@@ -32,16 +32,39 @@ export default function Feedback() {
     }
   };
 
+  const toggleResolved = async (row) => {
+    try {
+      await api.patch(`/feedback/${row.feedback_id}`, { is_resolved: !row.is_resolved });
+      setSnack(row.is_resolved ? 'Marked unresolved' : 'Marked resolved');
+      fetch();
+    } catch (err) {
+      setSnack('Error updating feedback');
+    }
+  };
+
   const columns = [
     { field: 'username', headerName: 'Name', width: 140 },
     { field: 'subject', headerName: 'Activity', flex: 1 },
     { field: 'content', headerName: 'Description', flex: 1.5 },
     { field: 'timestamp', headerName: 'Date', width: 180, valueFormatter: (v) => v ? new Date(v).toLocaleString() : '' },
     {
-      field: 'actions', headerName: 'Actions', width: 150,
+      field: 'is_resolved', headerName: 'Status', width: 100,
+      renderCell: ({ row }) => (
+        <Typography variant="body2" sx={{ color: row.is_resolved ? 'green' : 'orange', fontWeight: 600 }}>
+          {row.is_resolved ? 'Resolved' : 'Pending'}
+        </Typography>
+      ),
+    },
+    {
+      field: 'actions', headerName: 'Actions', width: 220,
       renderCell: ({ row }) => (
         <Box sx={{ display: 'flex', gap: 0.5 }}>
           <Button size="small" onClick={() => { setSelected(row); setViewOpen(true); }}>View</Button>
+          {hasRole('super_admin', 'official') && (
+            <Button size="small" color={row.is_resolved ? 'warning' : 'success'} onClick={() => toggleResolved(row)}>
+              {row.is_resolved ? 'Unresolve' : 'Resolve'}
+            </Button>
+          )}
           {hasRole('super_admin') && (
             <Button size="small" color="error" onClick={() => setDeleteTarget(row)}>Delete</Button>
           )}

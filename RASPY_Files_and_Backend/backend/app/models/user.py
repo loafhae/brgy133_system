@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Date, Enum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Date, Enum
+from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -11,6 +12,11 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False, index=True)
     password = Column(String(255), nullable=False)
     roles = Column(String(50), nullable=False)
+    profile_pic = Column(String(500))
+    is_active = Column(Boolean, default=True)
+    must_change_password = Column(Boolean, default=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # ✅ Kept structural profile relationships clean
     admin_profile = relationship("Admin", back_populates="user", uselist=False, cascade="all, delete-orphan")

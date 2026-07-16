@@ -4,12 +4,21 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String _baseUrl = 'https://afternoon-promotional-hispanic-orchestra.trycloudflare.com/api';
+  static const String _baseUrl = 'https://recognition-tomatoes-baskets-civilian.trycloudflare.com/api';
+  static String get baseUrl => _baseUrl.replaceAll('/api', '');
   static const String _tokenKey = 'auth_token';
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    String? token = prefs.getString(_tokenKey);
+    if (token == null) {
+      token = prefs.getString('token');
+      if (token != null) {
+        await prefs.setString(_tokenKey, token);
+        await prefs.remove('token');
+      }
+    }
+    return token;
   }
 
   static Future<void> saveToken(String token) async {
@@ -20,6 +29,7 @@ class ApiService {
   static Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+    await prefs.remove('token');
   }
 
   static Future<Map<String, String>> _headers({bool auth = true}) async {
@@ -38,6 +48,23 @@ class ApiService {
       if (token != null) headers['Authorization'] = 'Bearer $token';
     }
     return headers;
+  }
+
+  static Future<Map<String, dynamic>> put(String path, Map<String, dynamic> body, {bool auth = true}) async {
+    final response = await http.put(
+      Uri.parse('$_baseUrl$path'),
+      headers: await _headers(auth: auth),
+      body: jsonEncode(body),
+    );
+    return _handleResponse(response);
+  }
+
+  static Future<Map<String, dynamic>> delete(String path, {bool auth = true}) async {
+    final response = await http.delete(
+      Uri.parse('$_baseUrl$path'),
+      headers: await _headers(auth: auth),
+    );
+    return _handleResponse(response);
   }
 
   static Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body, {bool auth = true}) async {

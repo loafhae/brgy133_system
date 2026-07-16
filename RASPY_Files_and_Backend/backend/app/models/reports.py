@@ -16,5 +16,5 @@ class Report(Base):
     start_date = Column(Date)
     end_date = Column(Date)
     file_path = Column(String(500))
-    created_by = Column(Integer, ForeignKey("tbl_Users.user_id", ondelete="SET NULL"))
+    created_by = Column(Integer, ForeignKey("tbl_users.user_id", ondelete="SET NULL"))
     created_at = Column(DateTime, server_default=func.now())

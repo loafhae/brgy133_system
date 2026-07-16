@@ -1,0 +1,2078 @@
+CHAPTER 1
+Project Overview
+1.1 Project Name
+Multi-Platform Barangay Announcement and Garbage Collection Notifier using IOT
+Technology
+1.2 Project Members
+• Ambuyo, Joyce Bernadeth S., - Documentation Leader
+• Canlas, Kenth Luigi B., - Communication Leader
+• Lagapa, John Laurence A., - Communication Leader
+• Nadonga, Sunday Le’Chaim L., - Project Leader
+• Nopre, Argie C., - Technical Leader
+• Perdido, Hanna Llouise C., - Quality Assurance Leader
+1.3 Project Duration and Activities
+The Data Gathering, Planning, and Designing phase of the project will take place during
+the first semester of School Year 2025–2026, during this phase, the team will conduct
+requirements analysis, gather data through interviews or surveys, and create detailed
+plans for the project.
+This will include defining the project's scope, creating system designs such as wireframes
+and database schemas, and outlining the overall architecture of the system.
+The Development, Implementation, Testing, and Integration phase will be carried out
+during the first semester of School Year 2026–2027. In this phase, the actual coding and
+system development will take place, followed by implementation of the system. After
+development, the system will undergo rigorous testing, including unit testing, integration
+testing, and user acceptance testing. The final step in this phase will involve integrating
+the system into the intended environment and preparing documentation for final
+evaluation or presentation.
+Page | 7
+
+---PAGE BREAK---
+
+1.4 Background
+In Barangay 133, Tondo, Manila, the team observed that communication between the
+barangay officials and the residents is a significant challenge. The current system for sharing
+information relies on traditional printed notices and posts on social media. However, these
+methods are often ineffective. Printed notices can be easily missed or ignored, while social
+media posts may not reach all residents due to algorithms or because not everyone follows
+the page. This leads to missed announcements, confusion, and delayed updates.
+A more specific problem identified in the community is the inefficient waste
+management, particularly the "floating" garbage collection schedule. Residents are often
+unsure of the exact time the garbage truck will pass by. This uncertainty causes two main
+issues: first, residents leave their garbage out on the street for long hours, which attracts
+pests, creates bad smells, and poses sanitation and health risks. Second, many residents miss
+the collection entirely, leading to uncollected garbage piling up in the area.
+The barangay currently lacks a centralized and real-time platform to handle these
+issues. There is no official system where residents can receive instant, verified alerts and
+where officials can efficiently manage services.
+To address these problems, this study proposes the development of the “Multi-
+Platform Barangay Announcement and Garbage Collection Notifier using IOT Technology.”
+This project aims to provide a reliable, technology-based solution to improve communication
+and streamline the garbage collection process, thereby helping Barangay 133 promote
+cleanliness, order, and better community participation.
+1.5 Scope
+The study is focused on the design, development, and evaluation of a complete,
+integrated system. The scope encompasses the following key features and functionalities:
+1.5.1 Included
+• User Account and Role Management
+• Centralized Announcement System
+• Image Processing-Based Garbage Collection Notifier through IP CCTV
+• Residents Web Portal
+• Feedback and Concerns Management System
+• Centralized Database Backend
+Page | 8
+
+---PAGE BREAK---
+
+• Truck detection
+1.5.2 Excluded
+• Real Time GPS Tracking
+• AI-Based Garbage Classification
+• Financial Transaction or Payment Features
+• Voice or SMS Notification Feature
+• Integration with other Social Media Platforms
+Page | 9
+
+---PAGE BREAK---
+
+CHAPTER 2
+Requirements Specification
+This chapter presents a comprehensive overview of the requirements and
+specifications necessary for the successful development and implementation of the system.
+It outlines both functional and non-functional requirements, provides detailed use cases, and
+describes the technical, operational, and business aspects that guide the system design. By
+establishing a clear understanding of the system’s expectations, constraints, and operational
+environment, this chapter serves as a blueprint for ensuring that the final product meets
+stakeholder needs and performs reliably under expected conditions.
+2.1 Functional Requirements
+Table 2.1 Functional Requirements
+ID Requirement Description Priority
+The system shall allow the Super Admin to add,
+FR1 High
+update, and delete user accounts.
+The system shall allow the Super Admin to add,
+FR2 High
+update, and delete resident records.
+The system shall allow Barangay Officials to log in
+FR3 High
+using their assigned credentials.
+The system shall allow Barangay Officials to create,
+FR4 High
+update, and delete announcements.
+The system shall allow Barangay Officials to view
+FR5 Medium
+residents’ history and feedback.
+The system shall detect garbage trucks through CCTV
+FR6 High
+camera input using image processing.
+The system shall automatically send real-time
+notifications to residents upon garbage truck
+FR7 High
+detection.
+The system shall allow residents to log in using
+FR8 High
+credentials provided by the barangay.
+Page | 10
+
+---PAGE BREAK---
+
+ID Requirement Description Priority
+The system shall allow residents to view
+FR9 High
+announcements and garbage collection notifications.
+The system shall allow residents to fill out and send
+FR10 Medium
+feedback forms to barangay officials.
+The system shall allow the Super Admin to view all
+FR11 Medium
+residents’ feedback and activity history.
+The system shall send push notifications to residents
+FR12 Medium
+about new announcements.
+The system shall store and retrieve all system data in a
+FR13 High
+centralized database server.
+The system shall allow officials to generate and
+FR14 view summary reports of announcements and Medium
+resident activities.
+The system shall display all information
+(announcements, alerts, feedback) in a web-based
+FR15 High
+portal and mobile app accessible via desktop or
+mobile devices.
+The system shall allow residents to view a log of their
+FR16 Low
+personal activity history.
+Page | 11
+
+---PAGE BREAK---
+
+2.1.1 Functional Requirements Descriptions
+Item Description
+Req ID FR1
+Description The system shall allow the Super Admin to add, update, and
+delete both Barangay Official Admin and Resident accounts.
+Priority High
+Functional This requirement ensures that the Super Admin has full
+Requirement control over user management. It allows account creation,
+Description modification, and removal to maintain an accurate and
+secure list of system users.
+Acceptance 1. Authentication and Authorization: Only the “Super
+Criteria Admin” has the privilege to the “User Management Page”
+2. User Management Interface: The system provides an
+interface that displays a list of all existing user accounts,
+their roles, and their status. 3. Account Creation:
+● The interface must have an "Add User" button that opens
+a form.
+● The form must include fields for Username, Temporary
+Password, and User Role.
+● Validation must ensure the username is unique.
+● On success, the new user is added to the list, and a success
+message is shown.
+4. Account Update:
+● The interface provides an "Edit" option for each user.
+● The Super Admin can modify the user's role or reset their
+password.
+Page | 12
+
+---PAGE BREAK---
+
+● On success, the changes are saved and a success message
+is shown.
+5. Account Deletion:
+● The interface provides a "Delete" option for each user.
+● The system must show a confirmation prompt before
+deleting. ● On confirmation, the user is removed or deleted.
+Req ID FR2
+Description The system shall allow the Super Admin to add, update, and
+delete resident records.
+Priority High
+Functional Allows the Super Admin to manage resident information for
+Requirement efficient waste collection, notification, and feedback
+Description services.
+Acceptance 1. Authentication and Authorization: Only the “Super
+Criteria Admin” can access the Resident Records.
+2. Resident Record Interface: The system provides an
+interface to view, search, and filter all resident records.
+3. Resident Creation:
+● The interface has an "Add Resident" button that opens a
+form.
+● The form must include fields for resident details (e.g.,
+Name, Address, Birthday, Contact Info).
+● Validation ensures all required fields are filled.
+Page | 13
+
+---PAGE BREAK---
+
+● On success, the new resident record is saved, and a
+success message is shown.
+4. Validation (Duplicate Check): The system must prevent
+the creation of duplicate residents based on a unique
+combination (e.g., Full Name and Birthday).
+5. Resident Update:
+● The interface provides an "Edit" option for each resident.
+● On success, the updated resident information is saved.
+6. Resident Deletion:
+● The interface provides a "Delete" option for each resident.
+● The system must show a confirmation prompt before
+deleting. ● On confirmation, the resident's record is
+removed or archived.
+Req ID FR3
+Description The system shall allow Barangay Officials to log in securely
+using authorized credentials.
+Priority High
+Functional This requirement enables Barangay Officials to access the
+Requirement admin dashboard through a secure login process. The
+Description system verifies credentials before granting access to
+prevent unauthorized entry.
+Page | 14
+
+---PAGE BREAK---
+
+Acceptance 1. Login Interface: The system provides a login page with
+Criteria fields for "Username" and "Password" and a "Login" button.
+2. Authentication (Success): When a Barangay Official enters
+their correct credentials and clicks "Login," the system must
+grant them access and redirect them to their official
+dashboard.
+3. Authentication (Failure): When a user enters an incorrect
+username or password, the system must display an error
+message (e.g., "Invalid username or password") and must
+not grant access.
+4. Validation: If the "Username" or "Password" field is left
+empty, the system must show a message prompting the
+user to fill in the fields.
+Req ID FR4
+Description The system shall allow Barangay Officials to create, update,
+and delete barangay announcements.
+Priority High
+Functional This ensures that barangay officials can manage
+Requirement announcements efficiently. It provides the ability to post
+Description important updates such as meetings, garbage schedules, or
+emergency alerts.
+Acceptance 1. Authentication and Authorization: Only logged-in
+Criteria "Barangay Official" can access the "Manage
+Announcements" page.
+2. Announcement Interface: The system provides an
+interface to view all existing announcements.
+Page | 15
+
+---PAGE BREAK---
+
+3. Announcement Creation:
+● The interface has a "Create Announcement" button that
+opens a form.
+● The form includes fields for "Title" and "Body/Content."
+● When saved, the new announcement is published and
+visible to residents.
+4. Announcement Update:
+● The interface provides an "Edit" option for each
+announcement. ● When saved, the changes are
+immediately reflected on the published announcement.
+5. Announcement Deletion:
+● The interface provides a "Delete" option for each
+announcement.
+● The system must show a confirmation prompt before
+deleting.
+● On confirmation, the announcement is removed and no
+longer visible and archived.
+Req ID FR5
+Description The system shall allow Barangay Officials to view resident
+history and feedback.
+Priority Medium
+Page | 16
+
+---PAGE BREAK---
+
+Functional Allows barangay officials to access residents submitted
+Requirement feedback and review their activity history for better
+Description community response and decision-making.
+Acceptance 1. Authentication and Authorization: Only logged-in
+Criteria "Barangay Official" can access the "Resident History" and
+"Feedback" modules. 2. Data Access Interface:
+● The system provides a search function to find a specific
+resident.
+● When a resident is selected, the official can view a read-
+only log of their history (e.g., past requests, issues).
+● The official can view a read-only log of feedback submitted
+by that resident.
+3. Data Integrity: This interface must be "view-only." The
+official must not be able to edit or delete any history or
+feedback logs from this screen.
+Req ID FR6
+Description The system shall detect garbage trucks through CCTV
+camera input using image processing.
+Priority High
+Functional Integrates image processing to automatically identify
+Requirement garbage truck presence at collection points using live CCTV
+Description footage.
+Page | 17
+
+---PAGE BREAK---
+
+Acceptance 1. System Connection: The system must successfully
+Criteria connect to and receive the live video feed from the
+designated CCTV cameras via RTSP.
+2. CPU Optimization: The Python application must
+aggressively downscale the video stream to a 320x320
+resolution before inference.
+3. Frame Skipping: The system must implement a frame-
+skipping strategy (e.g., processing 1 frame every 10) to allow
+the CPU to keep up.
+4. Detection, Validation, and Performance:
+The system's INT8-quantized TFLite model must
+demonstrate a proof-of-concept with a target accuracy of
+85-90%.
+The system must maintain a low false-positive rate (no more
+than 1 false positive per hour) under daylight and clear-
+weather conditions.
+5. Logging and Trigger: A confirmed detection must
+immediately trigger a secure HTTP API call to the main
+server (PC). The main server is then responsible for logging
+the event (FR13) and triggering the notification (FR7).
+Req ID FR7
+Page | 18
+
+---PAGE BREAK---
+
+Description The system shall automatically send real-time notifications
+to residents upon garbage truck detection.
+Priority High
+Functional Sends automated notifications to residents when a garbage
+Requirement truck is detected near their collection area, ensuring timely
+Description waste disposal.
+Acceptance 1. System Trigger: This function must be automatically
+Criteria triggered only by a successful detection event from FR6.
+2. Notification Logic:
+● The system must identify the correct group of residents to
+notify based on the camera location.
+● The system sends a notification to all targeted residents.
+● The notification message must contain clear, predefined
+content (e.g., "The garbage truck is now in your area.").
+3. Performance and Logging:
+● Notifications must be sent within a specified time (e.g., 60
+seconds) of the detection.
+● The system must log all sent (or failed) notifications,
+including the timestamp and recipient group.
+Req ID FR8
+Page | 19
+
+---PAGE BREAK---
+
+Description The system shall allow residents to log in using credentials
+provided by the barangay.
+Priority High
+Functional Provides residents with secure login credentials to access
+Requirement their personalized dashboards for announcements,
+Description notifications, and feedback.
+Acceptance 1. Login Interface: The system must provide a login page
+Criteria with fields for "Username" and "Password" and a "Login"
+button for residents. 2. Authentication (Success): When a
+resident enters their correct, assigned credentials and clicks
+"Login," the system must grant them access and redirect
+them to the resident portal.
+3. Authentication (Failure): When a resident enters an
+incorrect username or password, the system must display
+an error message (e.g., "Invalid username or password") and
+must not grant access.
+4. Validation: If either the "Username" or "Password" field
+is left empty, the system must show a validation message
+prompting the user to fill in the fields.
+Page | 20
+
+---PAGE BREAK---
+
+Req ID FR9
+Description The system shall allow residents to view announcements
+and garbage collection notifications.
+Priority High
+Functional Enables residents to access and view barangay
+Requirement announcements and automated garbage collection alerts
+Description through their user interface.
+Acceptance 1. Authentication and Authorization: Only a logged-in
+Criteria resident can view the "Announcements" and "Notifications"
+pages.
+2. Announcements Interface: The system must display a
+page or feed with a list of all published announcements from
+barangay officials,
+ordered from newest to oldest.
+3. Garbage Notifications Interface: The system must display
+a page or log of garbage collection notifications (from FR7),
+clearly showing the most recent or active notification.
+4. Data Display: This interface must be "view-only." The
+resident cannot edit or delete any announcements or
+notifications.
+Page | 21
+
+---PAGE BREAK---
+
+Req ID FR10
+Description The system shall allow residents to fill out and send
+feedback forms to barangay officials.
+Priority Medium
+Functional Provides residents a feedback submission feature for
+Requirement reporting issues, complaints, or suggestions directly to
+Description barangay officials.
+Acceptance 1. Authentication and Authorization: Only a logged-in
+Criteria resident can access the "Send Feedback" feature.
+2. Feedback Form Interface: The system must provide a
+form with fields for "Subject" (or category) and "Feedback
+Message."
+3. Validation: The "Feedback Message" field must not be
+empty. 4. Submission: When the resident clicks "Submit,"
+the feedback form is sent to the barangay official, and the
+resident receives a success confirmation message (e.g.,
+"Feedback sent successfully.").
+5. Duplicate Prevention: The system shall prevent a resident
+from submitting identical feedback (based on message
+content) within a 5-minute window to avoid spam.
+Page | 22
+
+---PAGE BREAK---
+
+Req ID FR11
+Description The system shall allow the Super Admin to view all residents’
+feedback and activity history.
+Priority Medium
+Functional Allows the Super Admin to review residents’ interactions,
+Requirement feedback, and activity records for performance monitoring
+Description and system improvements.
+Acceptance 1. Authentication and Authorization: Only a user with
+Criteria "Super Admin" privileges can access the "Resident Activity"
+and "Feedback" logs. 2. Data Access Interface: The system
+provides a central dashboard to view all feedback submitted
+by residents and a log of all resident activities (e.g., logins,
+submissions).
+3. Search and Filter: The Super Admin must be able to search
+for a specific resident or filter the logs by date range or
+activity type. 4. Data Integrity: This interface must be "view-
+only." The Super Admin cannot edit or delete the logs.
+Req ID FR12
+Page | 23
+
+---PAGE BREAK---
+
+Description The system shall send push notifications to residents about
+new announcements.
+Priority Medium
+Functional Automatically alerts residents when new barangay
+Requirement announcements are posted to keep them informed and
+Description updated.
+Acceptance 1. System Trigger: This function must be automatically
+Criteria triggered when a "Barangay Official" publishes a new
+announcement (from FR4). 2. Notification Logic:
+● The system identifies the correct resident group to notify.
+● The system identifies the correct resident group to notify.
+Message content must be clear and predefined (e.g.,
+“Barangay Announcement: [Announcement Title]”).
+3. Performance and Logging:
+● Notifications must be sent within 60 seconds.
+● System logs all sent or failed notifications with timestamp
+and recipient details.
+Req ID FR13
+Page | 24
+
+---PAGE BREAK---
+
+Description The system shall store and retrieve all system data in a
+centralized database server.
+Priority High
+Functional Ensures all data (user info, announcements, notifications,
+Requirement feedback) are stored in a centralized MySQL (or MariaDB)
+Description database server running on the on-premises PC.
+Acceptance 1. Data Storage (Write): All data created (e.g., new user,
+Criteria resident record, announcement, feedback) must be
+successfully saved to the central MySQL database.
+2. Data Retrieval (Read): All information displayed in the
+portal must be fetched from the central MySQL database.
+3. Data Persistence: Data must be persistent, meaning it is
+not lost after a user logs out or the server restarts.
+Req ID FR14
+Page | 25
+
+---PAGE BREAK---
+
+Description The system shall allow officials to create and view summary
+reports of announcements and resident activities.
+Priority Low
+Functional This requirement enables officials to monitor system usage
+Requirement and resident engagement through summarized activity logs
+Description and reports.
+Acceptance 1. Report Functionality: Officials must be able to access the
+Criteria “report” dashboard.
+2. System Logic: Reports must accurately reflect data from
+the MySQL database.
+3. Specific Reports: The system shall allow officials to
+generate a PDF report of all announcements posted within
+a selected date range.
+Req ID FR15
+Page | 26
+
+---PAGE BREAK---
+
+Description The system shall display all information (announcements,
+alerts, feedback) in a web-based portal accessible via
+desktop or mobile devices.
+Priority Medium
+Functional Ensures the entire system is web-based and responsive
+Requirement using React (frontend) and a Python-based API (backend).
+Description
+Acceptance 1. Accessibility: The system must be accessible using a
+Criteria standard web browser (e.g., Chrome, Safari, Firefox).
+2. Responsive Design (Desktop): The web portal must be
+fully functional and display correctly on desktop and laptop
+screen resolutions.
+3. Responsive Design (Mobile): The web portal's layout must
+automatically adapt to smaller screens (e.g., smartphones,
+tablets), ensuring all text is readable and all buttons are
+usable without requiring horizontal scrolling.
+Req ID FR16
+Page | 27
+
+---PAGE BREAK---
+
+Description The system shall allow residents to view a log of their
+personal activity history.
+Priority Medium
+Functional This requirement enables residents to review their system
+Requirement interactions, such as login times, the status of their
+Description submitted feedback, and a log of all received notifications
+(both announcements and garbage alerts). This provides
+transparency and allows residents to track their
+engagement with the system.
+Acceptance 1. Authentication and Authorization: Only a logged-in
+Criteria resident can access the "My Activity History" page. The
+resident must only be able to view their own history and not
+the activity of any other user.
+2. Interface and Access: The Resident Portal must include a
+clearly labeled "Activity History" or "My Logs" option in the
+user menu/dashboard.
+3. Data Display: The system must display a chronological,
+read-only list of the resident's past activities. This list must
+include, at minimum: Date and Time of Activity, Activity
+Type (e.g., Login, Feedback Sent, Notification Received), and
+a Status/Summary.
+Page | 28
+
+---PAGE BREAK---
+
+4. Sorting and Filtering: The system shall allow the resident
+to sort the history by date (newest first by default) and filter
+the history by Activity Type. * Data Integrity: This interface
+must be view-only. The resident must not have any interface
+options to edit, delete, or modify any logged activity
+records.
+2.2 Non-Functional Requirements
+ID Non- Description
+Functional
+Requirement
+NFR1 Performance The web application shall load all pages in
+under 3 seconds. Admin dashboards with
+complex data shall load in under
+5seconds.
+NFR2 Real-Time Garbage-truck detection (FR6) and
+Processing resident notification (FR7)shall occur
+within 90 seconds of the event. This
+includes CPUdetection time on the
+Raspberry Pi plus the network API call
+tothe main server.
+NFR3 Usability The system shall be learnable. A new user
+must be able to log inand submit a
+feedback form in under 90 seconds.
+NFR4 Reliability The system's operation is dependent on
+the 24/7 operation ofboth the PC Server
+and the RPi Sensor, and the LAN
+connectionbetween them.
+Page | 29
+
+---PAGE BREAK---
+
+NFR5 Security All web traffic must be encrypted in
+transit via the CloudflareTunnel (HTTPS).
+All user passwords stored in the database
+mustbe hashed (e.g., bcrypt).
+NFR6 Maintainability The codebase shall adhere to professional
+coding standards(e.g., docstrings, linting).
+NFR7 Scalability The system shall support at least 100
+simultaneous active users.
+NFR8 Availability The system shall be accessible 24/7,
+assuming a stable powersupply and
+internet connection for both the PC
+Server and theRPi Sensor.
+NFR9 Compatibility The system shall work on modern
+browsers (Chrome, Edge, Firefox, Safari)
+and adapt to different screen sizes.
+NFR10 Data Integrity All database transactions must be
+validated to prevent duplicateor lost data.
+NFR11 Backup and The MySQL database shall perform
+Recovery automatic backups (e.g., ascheduled
+mysqldump) at least once per day.
+NFR12 Accessibility The web portal shall be usable by people
+with common visual and motor
+disabilities (WCAG 2.1 Level AA,
+keyboardnavigation).
+Page | 30
+
+---PAGE BREAK---
+
+NFR13 Audit Trail The system shall log all major
+administrative actions (add, edit, delete)
+for accountability.
+NFR14 Portability The system has two components: (1) The
+Detector Service,portable to a Raspberry
+Pi OS (64-bit) environment. (2) The
+MainServer, portable to a Windows/Linux
+PC environment runningMySQL, Python
+(API).
+NFR15 Compliance The system shall comply with the Data Privacy
+Act of 2012(Republic Act No. 10173).
+2.3 Use Cases
+Use Name Description Actors
+Case
+ID
+UC1 Manage Allows the Super Super Admin
+Accounts Admin to create,
+update, and delete
+user accounts in
+the system.
+UC2 Manage Enables the Super Super Admin
+Resident Admin to view and
+Record manage resident
+information.
+Page | 31
+
+---PAGE BREAK---
+
+UC3 View Lets the Super Super Admin
+Resident Admin access and
+Feedback review feedback
+submitted by
+residents.
+UC4 Manage Allows the Barangay
+Announce Barangay Official Official Admin
+ments Admin to create,
+edit, and delete
+barangay
+announcements.
+UC5 Send Allows residents to Residents
+Feedback send feedback or
+concerns to the
+barangay officials.
+UC6 View Lets residents view Residents
+Announce barangay
+ment announcements
+and garbage
+collection updates.
+UC7 View Enables residents Residents
+Activity to review their
+History previous
+notifications and
+system activities as
+well as the
+feedback.
+Page | 32
+
+---PAGE BREAK---
+
+UC8 Login/Log Provides secure Super Admin,
+out access to the Barangay
+system for all user Official
+types. Admin,
+Residents
+UC9 Receive Notifies residents Residents
+Garbage automatically when
+Alert a garbage truck is
+detected by the
+camera system.
+UC10 Detect The system uses Camera
+Garbage the live feed from System
+Truck the Camera System
+to identify a
+garbage truck in a
+predefined
+detection zone.
+UC11 Receive Sends notifications Residents
+Announce to residents
+ment whenever new
+barangay
+announcements
+are posted.
+Page | 33
+
+---PAGE BREAK---
+
+2.3.1 Use Case Diagram
+Page | 34
+
+---PAGE BREAK---
+
+2.4 System Requirements
+2.4.1 AI Training Environment (Cloud-Based)
+This environment is used only for training and exporting the AI model. It is not
+used for the live operation of the system.
+● Service: Google Colab
+● Purpose: Training and fine-tuning the YOLOv8n object detection model on a custom
+dataset.
+● Framework: Python, PyTorch / TensorFlow.
+2.4.2 Deployment Server
+This is the central machine that will run the AI model, backend, and database
+24/7.
+● Device: Raspberry Pi 5
+● Memory (RAM): 4 GB
+● Storage: 64GB+ High-Speed microSD Card (Class A2, U3) or External USB 3.0 SSD
+● Operating System: Raspberry Pi OS (64-bit)
+Software
+● AI/Backend: Python 3.10+
+• AI Model Runtime: TensorFlow Lite (TFLite)
+• AI Model: YOLOv8n-TFLite (INT8 Quantized)
+• Web API: FastAPI or Flask
+• Database: MySQL/MariaDB
+• Web Server: CloudFlare Tunnel
+• Frontend: Web Portal (Admins & Officials): React.js (hosted as static build
+files) Mobile Application (Residents): Flutter (Dart)
+2.4.3 Client-Side Requirements (User Devices)
+● For Barangay Official & Super Admin: Any modern desktop or laptop. ● For
+Residents: Any smartphone, tablet, or computer.
+● Browser: Latest version of Chrome, Safari, Firefox, or Edge.
+2.4.4 Infrastructure & Network Requirements
+● CCTV System: 1080p cameras with network streaming support (RTSP or
+ONVIF).
+Page | 35
+
+---PAGE BREAK---
+
+● Processing Stream: The Raspberry Pi (2.4.2) must downscale the 1080p RTSP
+feed to 320x320 for inference.
+● Processing Strategy: The Raspberry Pi (2.4.2) must implement a frame-
+skipping technique.
+● Local Network (LAN): A reliable 1 Gbps (Gigabit) Ethernet network is
+required, connecting the CCTV DVR/NVR, the Raspberry Pi (2.4.2), and the
+Main Application Server (2.4.3).
+● Internet Connection: 25 Mbps Symmetric (for Cloudflare Tunnel).
+● Secure Access & SSL: The Cloudflare Tunnel service runs on the Main
+Application Server (2.4.3) to securely expose the web portal.
+2.5 Business Rules
+This section defines the business rules that govern the operation and management of
+the Barangay Announcement and Garbage Collection Notifier using Image Processing. These
+rules ensure the system operates consistently with barangay policies, maintains data privacy,
+and supports reliable automated notifications
+1. Account Creation and Management – Only the Super Admin is authorized to create,
+update, and delete user and resident accounts. Residents are not permitted to self-register;
+credentials are issued by Super Admin to ensure identity verification and system security.
+2. Role-Based Access Control – System access and privileges are determined by role: Super
+Admin (full system control), Barangay Official (manage announcements and feedback), and
+Resident (view announcements, receive notifications, submit feedback). Role-based access
+control enforces separation of duties and data protection.
+3. Announcement Posting – Only authorized barangay officials or the Super Admin may
+create, edit, or delete announcements. Every announcement must include a title, message of
+body, and event date prior to publication.
+4. Announcement Visibility – Announcements are displayed in chronological order with the
+most recent first. Each announcement shall remain visible for a minimum of seven (7) days
+unless removed by an authorized official.
+5. Feedback Submission – Residents must be logged in to submit feedback. The system
+restricts duplicate submissions for the same issue to prevent spam. Barangay officials are
+expected to review and respond to feedback on a weekly basis.
+Page | 36
+
+---PAGE BREAK---
+
+6. Image Processing Detection – The system’s image-processing module automatically
+detects the presence of a garbage truck using CCTV footage.
+7. Automatic Notification Trigger – When the image-processing module confirms garbage
+truck detection, the system shall automatically send real-time notifications to all registered
+residents. No manual activation is required, ensuring a fully automated process for efficiency
+and reliability.
+8. Data Privacy and Security – All personal and system data must comply with the Data Privacy
+Act of 2012 (Republic Act No. 10173). Sensitive information, including login credentials, shall
+be encrypted and accessible only by authorized personnel.
+9. System Availability – The system shall operate continuously, 24 hours a day, seven days a
+week, except during scheduled maintenance. Barangay officials must announce any
+maintenance periods in advance.
+10. Detection Event Logging – Each garbage truck detection event shall be automatically
+recorded with its timestamp, image reference, and notification status. This ensures
+traceability of every detection process.
+11. Ethical and Authorized Use – All users must adhere to ethical use of the system.
+Tampering with data, posting false information, or misusing system features is strictly
+prohibited and subject to disciplinary action.
+2.6. Constraints
+1. Image processing accuracy may vary depending on lighting conditions, camera
+resolution, and angle of placement.
+2. The detection feature functions only within predefined camera zones and cannot
+monitor unregistered areas.
+3. Residents must be registered or logged in to receive announcements and
+notifications.
+4. System performance may be affected by server capacity and network latency.
+5. The project development and testing are limited to the 2nd semester of the
+academic year.
+6. Hardware components such as cameras and servers must be available and properly
+maintained.
+Page | 37
+
+---PAGE BREAK---
+
+7. The system’s accessibility depends on the compatibility of users’ devices and
+browsers.
+8. Maintenance and updates can only be performed when the server is online and
+stable.
+9. The system, in its current scope, is dependent on user access to smartphones and
+the internet. It does not provide notifications for residents without digital access. 10. The
+system is a distributed system and depends on a reliable local network (LAN) connection
+between the Raspberry Pi 5 and the PC server.
+11. The system requires two on-premises devices (the RPi 5 and the PC server) to be
+powered on and operational 24/7.
+12. The AI detection (FR6) is still CPU-bound on the Raspberry Pi 5, limiting it to a low-
+FPS detection rate (1-2 FPS).
+13. The system’s public web accessibility is critically dependent on the Cloudflare
+Tunnel service (cloud flared) running on the PC server.
+14. Image processing accuracy (FR6) may vary depending on lighting conditions,
+weather, camera resolution, and angle of placement.
+2.7 Assumptions
+1. Residents of Barangay 133 have access to smartphones or computers with stable
+internet connectivity.
+2. Barangay officials and staff are trained to operate the admin dashboard and
+monitoring tools.
+3. Surveillance cameras with sufficient resolution and reliability are already installed
+at designated garbage collection points.
+4. Residents are willing to participate in the feedback system and keep their contact
+information updated for notifications.
+5. The Barangay Chairman will assign one (1) personnel to manage all system-related
+data and oversee daily operations.
+6. The database server and web platform are hosted locally or on a secure cloud
+service to ensure data accessibility and reliability.
+Page | 38
+
+---PAGE BREAK---
+
+7. The image processing system can be trained to accurately detect and identify
+garbage trucks under daylight and clear weather conditions.
+8. Residents have basic digital literacy to navigate the website or mobile interface for
+announcements and feedback.
+2.8 Dependencies
+1. The system depends on the proper setup and operation of the camera module for
+image detection.
+2. The barangay and residents have reliable internet connectivity.
+3. The database must remain active to support announcements, feedback, and user
+records.
+4. User cooperation is essential during system testing and deployment.
+5. The system relies on a properly configured Python environment (Flask/Django) for
+backend operations.
+6. Push notifications depend on third-party services and active network connections.
+7. Secure access requires valid SSL certificates for encrypted data transmission. 8.
+Continuous operation depends on stable power supply and backup systems. 9. The
+system requires compatible web browsers and updated devices for optimal
+performance.
+10. The system's detection accuracy is critically dependent on the quality, resolution
+(min. 1080p), and network accessibility of the existing barangay CCTV cameras.
+Performance with lower-specification cameras is not guaranteed.
+11. The notification system (FR7) is critically dependent on a successful HTTP API call
+from the RPi 5 to the PC server.
+12. The system's detection performance is critically dependent on the successful
+conversion of the YOLO model to an INT8-quantized TFLite file.
+13. The system’s public web access depends entirely on the cloudflare tunnel service
+running and authenticated on the Main Application Server (PC).
+14. The system requires a registered domain name pointed to Cloudflare's
+nameservers. 15. The system depends on the proper setup and operation of the
+existing CCTV cameras and their RTSP streams.
+Page | 39
+
+---PAGE BREAK---
+
+16. Continuous operation depends on stable power supply and active cooling for the
+Raspberry Pi 5.
+17. Continuous operation depends on a stable power supply for the PC Server.
+Page | 40
+
+---PAGE BREAK---
+
+CHAPTER 3
+3.1 Architecture Diagram
+The system follows a Client-Server Architecture structured within a Four-Tier Layer
+Model. In this architecture, the Clients (Residents' smartphones, Admin laptops, and the
+Raspberry Pi detection unit) initiate requests and display information, while the centralized
+Server (the Main PC) processes logic, manages data, and secures the database. This
+separation ensures that heavy processing and data storage remain secure on the server, while
+the user interface remains lightweight and responsive on client devices.
+Figure 3.1. Four-Tier Layered Architecture
+Page | 41
+
+---PAGE BREAK---
+
+3.1.1. Presentation Layer: The User Interface
+This layer represents the "Client" side of the architecture. It is responsible for gathering user
+input and presenting data fetched from the server.
+Table 3.1. User, Interface Descriptions, and Context
+User Interface Descriptions Context
+Resident Responsive web Allows the residents to log in,
+portal (React) displaying view announcements, see realtime
+the "Garbage Notifier" garbage collection alerts, view
+alert, Dashboard, and activity history, view and submit
+Feedback Form. feedback or concerns to the
+barangay.
+Barangay Web dashboard Allows the official to create,
+Official with secure forms for edit, and delete announcements;
+creating announcements view all resident feedbacks and
+and viewing schedules. activity history; and monitor system
+usage.
+Super Admin Specialized secure Allows the Super Admin to
+web portal with system- manage all user accounts, view
+wide controls (User system logs and reports, and oversee
+Management, Logs). all data in the system.
+3.1.2. Business Logic Layer: The Server Engine
+This layer resides primarily on the Server (and partially on the Raspberry Pi Edge Client). It
+acts as the bridge, processing commands from the clients before they reach the data.
+Page | 42
+
+---PAGE BREAK---
+
+Table 3.2. Core Logic Component, System Action, and Proposal Benefit
+Core Logic System Action Proposal Benefit
+Component
+Image Processing Analyzes live video Automation: Solves the
+Engine feeds using algorithms to problem of "floating"
+identify garbage trucks schedules by automatically
+and triggers an event identifying truck arrivals
+upon detection without human intervention.
+Notification The Server Timeliness: Ensures
+Dispatcher receives the signal and residents are notified instantly,
+instantly broadcasts a preventing uncollected
+"Push Notification" to all garbage and missed
+connected Residents. community updates
+Access Control Enforces Role- Security: Prevents
+Manager Based Access Control unauthorized access to
+(RBAC), ensuring strict sensitive modules like the
+separation between Super Admin Dashboard and User
+Admins, Officials, and Management.
+Residents.
+Announcement Manages the Reliability: Replaces
+Logic creation and visibility of ineffective printed notices with
+posts, ensuring a centralized, verified source of
+announcements remain information.
+visible for the mandatory
+7-day period.
+Page | 43
+
+---PAGE BREAK---
+
+Feedback Processes resident Efficiency: Organizes
+Validator concerns, filters out spam community complaints into a
+(duplicate submissions formal system, eliminating the
+within 5 minutes), and clutter previously experienced
+routes valid feedback to on social media.
+officials.
+3.1.3. Data Access Layer (DAL): The Data Gateway
+The DAL is a server-side component that abstracts the database. It ensures that Clients
+never communicate directly with the Database, preventing security vulnerabilities.
+Table 3.3. Data Access Layer Functions, Technical Action, and Proposal Benefit
+DAL Technical Action Proposal Benefit
+Function
+API Receives JSON requests Decoupling: Allows the
+Endpoint Handling from the React Client (e.g., GET Client (Frontend) and Server
+/announcements) and triggers (Backend) to be developed
+the appropriate database query. independently.
+Input Cleans all data sent by Protection: Prevents SQL
+Sanitization clients (e.g., removing special Injection attacks where a
+characters from feedback malicious client tries to destroy
+forms). the database.
+Object- Converts complex SQL Maintainability: Makes
+Relational table rows into simple Python the server code cleaner and easier
+Mapping (ORM) objects that the Business Logic to update if database rules
+layer can understand. change.
+Page | 44
+
+---PAGE BREAK---
+
+3.1.4 Database Layer
+This is the secure repository for all transactional and historical data. It is physically and
+logically protected from external access.
+Table 3.4. Data stored, access requirement and proposal benefit
+Data Stored Access Requirement Proposal Benefit
+Hashed Passwords Compliance: Strictly adheres
+Resident & (bcrypt); Role-Based to the Data Privacy Act of
+Official Access Control. 2012 (RA 10173) by
+Profiles protecting sensitive resident
+information from
+unauthorized access.
+High Performance: Real-Time Processing:
+AI Detection Optimized for high- Supports NFR2 by ensuring
+& speed write that rapid garbage detection
+Notification operations (INSERTs) events are recorded
+Logs from the Raspberry instantly without slowing
+Pi. down the notification
+engine.
+Audit Trails & Immutable Logging: Accountability: Fulfills
+System Append-only access; NFR13 by maintaining a
+Settings restricted strictly to permanent, unalterable
+Super Admin. history of all administrative
+actions (login, create,
+delete) for security audits.
+Page | 45
+
+---PAGE BREAK---
+
+3.2 Module Descriptions
+Table 3.5. Module Description
+Module Description Example Functionality
+Name
+The Verifies that a user logging in is a "Barangay
+1. gatekeeper of the Official" and grants them access to the Admin
+Authentication system. It handles Dashboard while denying them access to Super
+& Security secure login, session Admin settings.
+Module management, and
+password hashing
+(bcrypt) for all three
+user roles (Super
+Admin, Official,
+Resident).
+The Processes a video frame, detects a
+2. dedicated software "Garbage Truck" with 90% confidence, and
+Vision-Trak AI running on the immediately sends a "Positive Detection" signal to
+Detector Raspberry Pi 5. It the main server.
+(Edge) captures live video
+from the CCTV and
+runs the YOLOv8
+TFLite model to
+detect garbage
+trucks.
+The backend Receives a detection signal but ignores it if
+3. listener (Python API) a "Truck Alert" was already sent to residents in the
+Detection that receives signals last 5 minutes (Spam Prevention).
+from the Raspberry
+Page | 46
+
+---PAGE BREAK---
+
+Event Handler Pi. It validates the
+(Server) signal to prevent
+false positives or
+duplicate spam
+alerts.
+Manages the Instantly updates the status on the
+4. real-time Resident Dashboard from "No Schedule" to
+Notification dissemination of "TRUCK DETECTED" when the signal is verified.
+Broadcast alerts. It pushes data
+Service to the React frontend
+to trigger the visual
+"Garbage Truck
+Arriving" banner on
+resident devices.
+Allows An official drafts a post titled "Barangay
+5. Barangay Officials to General Assembly," sets the date, and publishes it
+Announcement create, update, and for all residents to see.
+Management delete community
+Module announcements. It
+manages the
+visibility and
+expiration of
+posts.modules
+whenever the truck
+is detected within
+the monitored area.
+The front- A resident opens the website and sees the
+6. News facing React latest announcements at the top, followed by the
+Feed & component that current garbage collection status.
+Page | 47
+
+---PAGE BREAK---
+
+Dashboard fetches and displays
+Module active
+announcements and
+truck status in
+chronological order
+for residents.
+Provides the A resident fills out a form reporting
+7. interface and "Uncollected Trash in Zone 4." The module ensures
+Resident validation logic for the message isn't empty before saving it.
+Feedback residents to submit
+Collector complaints or
+suggestions
+regarding barangay
+services.
+8. An A Barangay Official views a list of new
+Feedback administrative complaints, filters them to find garbage-related
+Review & module that allows issues, and marks a resolved complaint as "Done."
+Response Officials and Super
+Admins to view
+resident feedback,
+filter by date/topic,
+and mark issues as
+"Resolved."
+9. A restricted The Super Admin adds a new user to the
+Resident module for the Super system, inputting their names and assigning them
+Record Admin to manage a "Resident" role credential.
+Manager the database of
+residents. It handles
+the creation and
+Page | 48
+
+---PAGE BREAK---
+
+updating of resident
+profiles.
+10. A highly The Super Admin creates a login account
+Official restricted Super for a Barangay Official, giving them "Official" level
+Account Admin module for permissions.
+Controller creating and
+managing Barangay
+Official accounts.
+11. Automatically Records a timestamped log entry:
+System Activity records all major "Admin_User1 deleted Announcement #45 on Nov
+Logger actions (logins, 30 at 10:00 AM," ensuring actions can be traced.
+deletions, edits) into
+an immutable log for
+security auditing and
+accountability.
+12. Aggregates Generates a monthly report showing:
+Report system data to "Total Trucks Detected: 24" and "Total Complaints
+Generation generate printable Received: 5" for the Barangay Captain's review.
+Engine summaries
+(PDF/CSV) regarding
+detection frequency
+and user
+engagement.
+13. Ensures A resident checks the "Announcement
+Resident accountability by Archive" to prove that the Barangay Official
+Interaction maintaining a posted a "No Collection" notice last Tuesday.
+History Module permanent,
+searchable history of
+Page | 49
+
+---PAGE BREAK---
+
+all barangay
+announcements.
+Even "expired" or
+"deleted" posts are
+archived, so
+residents can verify
+past information.
+14. Manages The Super Admin checks the "Server
+System database backups, Health" status to see if the Camera is online and
+Maintenance & monitors the clicks "Backup Data" to save a copy of the records.
+Configuration Raspberry Pi
+connection status,
+and handles data
+cleanup to ensure
+the system runs 24/7
+without crashing.
+3.3 Data Design
+The Data Design section is critical; it establishes the formal framework for how the
+system’s information will be structured, managed, and processed, translating conceptual
+needs into a concrete blueprint that ensures data integrity, consistency, and efficient retrieval
+throughout the entire system lifecycle.
+Page | 50
+
+---PAGE BREAK---
+
+Figure 3.2. Entity-Relation Diagram
+Figure 3.2 The relational database schema is designed to integrate community
+management with automated monitoring capabilities. Central to this design is a robust User
+Management module that employs a tbl_Users entity for centralized authentication, which
+links via a one-to-one relationship to specialized role entities—tbl_Admin, tbl_Official, and
+tbl_Residents—effectively enforcing Role-Based Access Control (RBAC) across the platform.
+The system’s technical core relies on the tbl_DetectionLog entity, which serves as a repository
+for machine learning outputs by storing critical metadata such as confidence scores and
+evidence images; this entity maintains a direct relationship with tbl_Notifications to trigger
+real-time alerts for residents and authorities upon the detection of environmental anomalies.
+To facilitate community engagement, the schema structures communication flows through
+tbl_Announcement, enabling officials to disseminate information, and tbl_Feedback, which
+Page | 51
+
+---PAGE BREAK---
+
+provides a structured channel for residents to report issues to administrators. Furthermore,
+system integrity and administrative oversight are secured through tbl_AuditLogs, which
+records transactional history for security purposes, and tbl_Reports, which aggregates data
+from feedback and detection modules to assist officials in analyzing community cleanliness
+and system usage trends.
+3.3.2 Data Flow Diagram
+Figure 3.3. Data Flow Diagram
+Figure 3.3 presents the Data Flow Diagram, illustrating the logical movement
+of data between external entities, processes, and data stores. The system interacts
+with three main external entities: Resident, Official, and Admin. Functionality is
+divided into six core processes. The Login Process handles Login Info from the
+Resident, verifies the account against the User Accounts data store, and allows the
+Resident to View Dashboard. The Process Detection receives Garbage Truck Detection
+signals from the Camera, checks the status against Detection Logs, and outputs
+Verified Data. The Submit Feedback Process receives Sends Feedback from the
+Resident, stores the Feedback Messages in Feedback Records, and allows the Resident
+to Review Feedback. The Manage Announcement Process receives the Creates
+Page | 52
+
+---PAGE BREAK---
+
+Announcement action from the Official, stores Announcement Details in the
+Announcement data store, and Publishes Announcement to the Resident. For
+administration, the Generate Report Process receives a Report Request from the
+Official, retrieves the Date and Time Range from System Records, and sends the PDF
+Summary back to the Official. Finally, the Manage Accounts Process receives requests
+from the admin to Add Residents and perform Config Update, manages Reset/Delete
+Accounts and Security History, and sends Audit Logs to the Admin. The DFD
+comprehensively models the flow of information across the system's core functions,
+from device input to administrative logging and service delivery.
+Page | 53
+
+---PAGE BREAK---
+
+3.3.3. Activity Diagram
+Figure 3.4. Activity Diagram
+Figure 3.4 illustrates the Activity Diagram for the Vision-Trak system, modeling
+the functional workflows across four swim lanes representing the main actors: Super
+Admin, Barangay Official, Barangay System (the core application), and Resident. The
+diagram details the processes from user authentication to administrative tasks and
+the automatic garbage detection service. The process begins with the Login activity
+Page | 54
+
+---PAGE BREAK---
+
+initiated by the Super Admin, Barangay Official, or Resident. All login attempts
+proceed to the central system activity: Validate Credentials. If the validation fails for
+any user, the flow exits with an Invalid Credentials message directed back to the
+corresponding user type. If validation is successful, the flow synchronizes and leads to
+the Display Dashboard activity, granting role-based access. After accessing the
+dashboard, each user role gains parallel access to specific functionalities. The Super
+Admin can Manage Accounts and View Feedback and History. The Barangay Official
+can Manage Announcements and View Residents' History. The Resident can View
+Announcement and Send Feedback. Crucially, the administrative and official activities
+often interact with the core system. The Manage Accounts, Manage Announcements,
+and View Residents History activities all interact with the system's Update Database
+and Fetch Data activities, ensuring data consistency. The Super Admin, Barangay
+Official, and Resident all have independent Logout paths, terminating their respective
+sessions. A separate, automated flow exists within the Barangay System Lane,
+commencing with the independent service that Detects Garbage Truck. Upon
+detection, the system Sends Alert, which leads directly to the Resident activity Receive
+Notification, concluding the core real-time service mechanism. The entire diagram
+provides a comprehensive, sequential view of system operation, clearly distinguishing
+between user-initiated tasks and automated services.
+3.3.4 Database Schema
+Table 3.6. List of tables and Attributes
+Table Name Attributes Description
+The central
+authentication
+user_id (PK),
+table used to store
+tbl_Users username,
+login credentials
+password, roles
+and define the
+access level (role)
+Page | 55
+
+---PAGE BREAK---
+
+for every user in
+the system.
+admin_id (PK), Stores specific
+user_id (FK), profile information
+first_name, for system
+tbl_Admin middle_name, administrators who
+last_name, have full control
+birthday, gender, over system
+contact settings.
+Contains the
+official_id (PK), demographic
+user_id (FK), details of
+first_name, community
+tbl_Official middle_name, officials
+last_name, responsible for
+birthday, gender, managing reports
+contact and
+announcements.
+resident_id (PK), Stores the profile
+user_id (FK), data of the
+first_name, community
+tbl_Residents middle_name, residents who use
+last_name, the system to view
+birthday, gender, alerts and send
+address, contact feedback.
+log_id (PK), The primary
+tbl_DetectionLog timestamp, operational table
+confidence_score, that records
+Page | 56
+
+---PAGE BREAK---
+
+image_path, automated
+notification_status detection events,
+including the AI
+confidence score
+and the file path to
+the captured
+evidence image.
+Manages the
+queue and status
+notification_id (PK), of alerts generated
+tbl_Notifications log_id (FK), status, from detection logs
+sent_at to ensure relevant
+parties are
+informed.
+specific record of
+announcement_id broadcast
+(PK), created_by messages posted
+tbl_Announcement
+(FK), title, content, by officials for the
+date_posted entire community
+to view.
+Stores complaints,
+suggestions, or
+feedback_id (PK),
+concerns
+created_by (FK),
+tbl_Feedback submitted by
+subject, content,
+residents for
+timestamp
+review by officials
+and admins.
+Page | 57
+
+---PAGE BREAK---
+
+Archives generated
+system summaries,
+report_id (PK), title,
+categorized by type
+file_format,
+(e.g., garbage
+tbl_Reports report_type,
+alerts, activity
+start_date,
+history) for
+end_date
+administrative
+analysis.
+Contains global
+configuration
+system_id (PK),
+variables that
+updated_by (FK),
+tbl_SystemSettings control the
+config_key,
+system's behavior,
+config_value
+accessible only by
+administrators.
+A security table
+that maintains a
+log_id (PK), user_id chronological
+tbl_AuditLogs (FK), action_type, record of user
+timestamp activities to ensure
+accountability and
+traceability.
+Table 3.6 presents the database schema designed to support the system’s core
+functionality. The architecture is centered on the tbl_Users entity, which facilitates
+centralized authentication and Role-Based Access Control (RBAC) by linking to specialized
+profile tables: tbl_Admin, tbl_Official, and tbl_Residents. The system's automated monitoring
+capabilities are managed through tbl_DetectionLog, which stores machine learning outputs
+such as confidence scores and evidence images, while tbl_Notifications ensures the timely
+dissemination of alerts triggered by these logs. Community engagement is structured through
+Page | 58
+
+---PAGE BREAK---
+
+tbl_Announcement for official broadcasts and tbl_Feedback for resident concerns.
+Furthermore, administrative oversight and data integrity are maintained by
+tbl_SystemSettings for configuration management, tbl_Reports for data aggregation, and
+tbl_AuditLogs, which provides a verifiable trail of all user activities for security purposes.
+3.5. Physical Arrangement of Devices
+Figure 3.5. Hybrid network
+Figure 3.5 illustrates the Hybrid Network architecture for the Barangay one
+three system, detailing the interconnected physical components, data flows, and
+network infrastructure. The diagram displays a combination of CCTV surveillance
+infrastructure and a standard Local Area Network structure. The surveillance system
+Page | 59
+
+---PAGE BREAK---
+
+begins with a CCTV camera, which is connected to storage and processing units. The
+video signal from the camera is channeled to a NVR (Network Video Recorder) and a
+DVR (Digital Video Recorder), with an HVR (Hybrid Video Recorder) positioned
+centrally to manage these streams. The video output from these recorders is displayed
+on a central CCTV Monitor and can also be viewed by dedicated computer terminals.
+The core data network provides connectivity for local processing and internet access.
+The CCTV system connects to a Switch, which acts as the central distribution point for
+the wired network. A Raspberry Pi device, designated for the Database and AI
+processing, is connected to the switch and feeds data to a primary workstation, PC
+two. The Switch also connects to the Router, which provides wireless access to Mobile
+Devices. Another workstation, PC one, is connected downstream and manages a
+printer and other peripherals, representing general administrative or management
+functions. This hybrid network design successfully integrates the crucial real-time
+video surveillance system with the administrative data network, ensuring both
+monitoring and data processing occur within a connected environment.
+Page | 60
+
+---PAGE BREAK---
+
+3.6. Conceptual Design
+Figure 3.6. Proposed Conceptual Design
+Figure 3.6 illustrates the Proposed Conceptual Design of the Barangay
+Announcement and Garbage Collection Notifier Using Image Processing, depicting the
+structural interplay between hardware components, user interfaces, and the central
+data repository. The architecture is anchored by a Database Server that facilitates real-
+time data synchronization across three primary operational modules. On the
+administrative side, the Super Admin is responsible for maintaining system integrity
+by managing user accounts and resident records, while simultaneously overseeing the
+automated monitoring component where a camera utilizes image processing to detect
+garbage trucks and store the resulting data. Parallel to this, Barangay Official Admins
+access the system via computer terminals to generate announcements and review
+resident history. The workflow extends to the community through a Resident Interface
+Page | 61
+
+---PAGE BREAK---
+
+(accessible via website or mobile), which supports bidirectional communication; this
+allows residents to receive instant push notifications regarding garbage collection and
+official announcements, while also providing a streamlined channel to submit
+feedback forms and view their personal activity history.
+3.7. System Prototype
+Figure 3.7.1. Login Form
+Figure 3.7.1, the Login Form serves as the initial gateway for all users accessing
+the Barangay 133 system. It presents a clean and professional interface with a
+centered User Authentication panel, designed to accommodate existing users logging
+into their accounts. The form provides dedicated input fields labeled Username and
+Password, where users may enter their registered Barangay ID or Email Address and
+corresponding password to ensure secure authentication. A clearly visible LOGIN
+button is positioned below the input fields, functioning as the primary call-to-action
+for submitting user credentials. Additional support features are included to enhance
+usability, such as the “Forgot Password?” link located beneath the login button, which
+assists users in account recovery. Overall, the login form is designed to deliver a
+secure, user-friendly, and efficient access point consistent with the barangay’s official
+interface layout.
+Page | 62
+
+---PAGE BREAK---
+
+Figure 3.7.2. Forgot Password
+Figure 3.7.2, the Password Reset Interface provides guidance for all users by
+instructing them to contact the barangay office for account recovery. A “Back to
+Login” button allows users to return to the login screen, ensuring a clear and secure
+password reset process.
+Page | 63
+
+---PAGE BREAK---
+
+Figure 3.7.3. Admin Dashboard
+Figure 3.7.3, presents the Admin Dashboard of the Barangay 133 system,
+designed to provide supervisory personnel with an immediate, high-level overview of
+system status and primary navigational control. The interface is structurally organized
+into a vertical Navigation Panel and the Content Area. The Navigation Panel features
+the currently highlighted Dashboard view, along with links for User Management,
+Residents Record, Feedback, System Settings, and a Logout control. The Content Area
+displays three crucial Key Performance Indicators: the Number of Users, the Number
+of Residents, and Pending Feedback. This interface functions as the central
+operational hub, enabling administrators to efficiently monitor system scale, prioritize
+actionable items, and access all system modules for streamlined management.
+Figure 3.7.4. User Management
+Figure 3.7.4 illustrates the User Management interface prototype, a critical
+administrative module for the Barangay 133 system designed to control system access
+and credentials. The view maintains the standard layout, with the Navigation Panel
+clearly highlighting the active User Management module. The Content Area is
+dedicated to account administration, featuring a Search Bar to locate specific users
+Page | 64
+
+---PAGE BREAK---
+
+and a Filter by Role control for list segmentation. Account provisioning is facilitated by
+the Add New User button. The central feature is a detailed table listing user records
+with defined columns for Username, assigned Role (e.g., Official, Resident), current
+Status (Active or Inactive), and Action controls (Edit and Delete). This module allows
+administrators to efficiently review, search, and manage all system user accounts and
+permissions.
+Figure 3.7.5. Delete Confirmation Dialog
+Figure 3.7.5 shows a delete Confirmation Dialog, which appears as an overlay
+on the User Management interface prototype. This is a crucial system safeguard
+implemented to prevent accidental data loss. The dialog intentionally interrupts the
+administrative workflow, presenting the explicit verification prompt: "Are you sure
+you want to DELETE this user?" The administrator is required to provide a definitive
+response via two high-contrast options: "YES" to irrevocably proceed with the account
+deletion, or "NO" to safely abort the operation and remain on the User Management
+screen. This mechanism enforces necessary authorization and reduces the risk
+associated with irreversible administrative actions.
+Page | 65
+
+---PAGE BREAK---
+
+Figure 3.7.6. Add User Form
+Figure 3.7.6, the User Management Interface enables authorized users to create and
+manage system accounts within the Barangay 133 system through a single, integrated form.
+It includes input fields for Username, Role Selection, Password, and Confirm Password,
+ensuring accurate account creation and secure credential setup. A clearly labeled Add User
+button allows administrators to submit new user details efficiently.
+Page | 66
+
+---PAGE BREAK---
+
+Figure 3.7.7 Add User Confirmation Dialog
+Figure 3.7.7 displays a modal Add User Confirmation Dialog, which appears as
+an overlay on the User Management interface, specifically following the submission
+of the Add User Form. This dialog serves as a final verification step to ensure the
+administrator's intent before account creation. The prompt explicitly asks: "Are you
+sure you want to ADD this user?" The administrator is presented with two mandatory
+options: "YES" to confirm the details and proceed with creating the new user account,
+or "NO" to cancel the operation and return to the form for potential modifications.
+This safeguard adds necessary friction to the account provisioning process, minimizing
+the risk of incorrectly created accounts.
+Page | 67
+
+---PAGE BREAK---
+
+Figure 3.7.8 Edit User Form
+Figure 3.7.8 presents the Edit User Form interface prototype, accessible within
+the User Management module and intended for modifying existing user account
+details. The layout maintains consistency with the system design, with the Navigation
+Panel positioned on the left side and clearly highlighting the active User Management
+section. The Content Area is populated with the current data of a selected user (e.g.,
+“Choi_07”), which is displayed in the Username input field. The form allows
+administrators to update the Username, change the user’s Role through a selection
+dropdown (with options for Residents, Barangay Official, and Admin), and modify the
+account credentials using masked Password and Confirm Password fields. A password
+visibility toggle is present to support secure review during updates. Instead of an
+“Add” button, the interface concludes with the Save button located at the bottom of
+the form, which commits all changes made to the existing user record. This form
+ensures secure and controlled modification of established system accounts while
+maintaining alignment with the visual layout shown in the interface.
+Page | 68
+
+---PAGE BREAK---
+
+Figure 3.7.9 Edit User Confirmation Dialog
+Figure 3.7.9 depicts a modal Edit User Confirmation Dialog, which is activated
+upon submitting changes via the Edit User Form. This dialog serves as a crucial system
+safeguard to verify the administrator's intent before updating an existing user record.
+The prompt explicitly asks: "Are you sure you want to SAVE this user?" The
+administrator must choose between two options: "YES" to confirm the modifications
+and apply them to the user's profile, or "NO" to discard the changes and return to the
+editing form. This final verification step prevents unintended changes to system
+accounts.
+Page | 69
+
+---PAGE BREAK---
+
+Figure 3.7.10 Residents Records
+Figure 3.7.10 displays the Residents Records interface prototype, the module
+dedicated to managing the demographic and contact information of all registered
+barangay residents. The standard Navigation Panel is maintained, with the Residents
+Records link visually highlighted to denote the active view. The Content Area is
+structured around a central table for data management. Key administrative features
+include a Search Bar for locating specific individuals, a Filter by Role dropdown (though
+its utility here may relate to different resident categories), and an Add New User
+button for registering new residents. The primary feature is the table, which lists
+resident records with columns providing essential data points: First Name, Middle
+Name, Last Name, Gender, and Address. This module ensures administrators can
+efficiently maintain, search, and manage comprehensive resident data.
+Page | 70
+
+---PAGE BREAK---
+
+Figure 3.8.0 Residents Records Continuation
+Figure 3.8.0, serving as a continuation of Figure 3.7.10, illustrates the detailed contact
+and status data within the Residents Records management module. The interface maintains
+the standard layout with the Navigation Panel clearly highlighting the active Residents
+Records section. The Content Area supplements the demographic data with additional
+resident attributes, presented within the main table. The columns displayed are Mobile
+Number, Birthday, Email, and Civil Status. A final Action column provides controls (Edit and
+Delete icons) for performing administrative modifications or removals of individual resident
+records. This continuation confirms the module's capability to manage comprehensive and
+actionable personal resident data.
+Page | 71
+
+---PAGE BREAK---
+
+Figure 3.8.1 Deletion of Resident Confirmation
+Figure 3.8.1 illustrates the system's critical safety mechanism designed to
+prevent accidental data loss during administrative maintenance. The interface
+displays a modal dialog box that is triggered immediately after an administrator
+attempts to remove an entry from the Residents Record database. This confirmation
+prompt serves as a final validation step, explicitly querying the user, "Are you sure you
+want to DELETE this resident?" while offering binary decision controls—"YES" to
+execute the permanent removal of the record, or "NO" to abort the operation. This
+design pattern enforces data integrity by ensuring that irreversible actions, such as the
+deletion of resident profiles, are performed intentionally and with explicit verification.
+Page | 72
+
+---PAGE BREAK---
+
+Figure 3.8.2 Add Resident Form
+Figure 3.8.2 presents the Add Resident Form; the primary data entry interface
+designed for the registration of new community members into the system. Accessible via the
+"Residents Record" administrative module, this form serves as the front-end mechanism for
+populating the resident database, requiring administrators to input comprehensive
+demographic details including the individual's full name, gender, birth date, civil status, and
+physical address. Beyond personal identification, the interface simultaneously captures
+essential contact information (mobile number, email) and establishes system access
+credentials through username and password fields, the latter of which includes a confirmation
+step to ensure input accuracy. The process concludes with the "Add Resident" command
+button, which triggers the validation and subsequent transmission of the encoded data to the
+central database server for permanent storage and account activation.
+Page | 73
+
+---PAGE BREAK---
+
+Figure 3.8.3 Add Resident Confirmation
+Figure 3.8.3 depicts the system's data validation mechanism, specifically the
+Add Resident Confirmation dialog. This modal interface is triggered immediately upon
+the submission of the resident registration form, acting as a final procedural
+checkpoint before data commitment. The interface presents a clear query, "Are you
+sure you want to ADD this resident?" accompanied by binary "YES" and "NO" options.
+This design pattern is implemented to mitigate human error, ensuring that the
+administrator explicitly verifies the intent to register the new profile into the database,
+thereby maintaining the integrity and accuracy of the resident records.
+Page | 74
+
+---PAGE BREAK---
+
+Figure 3.8.4 Edit Resident Form
+Figure 3.8.4 illustrates the Edit Resident Form, an administrative interface
+designed to ensure the continuous accuracy and relevance of the demographic
+database. This module is invoked when an administrator selects a specific resident
+record for modification, prompting the system to retrieve and auto-populate the input
+fields with the existing stored data—such as the resident's full name, physical address,
+contact details, and civil status. This design facilitates efficient data maintenance,
+allowing administrators to seamlessly rectify typographical errors or update personal
+information (e.g., change of address or marital status) without re-entering unchanged
+data. The modification process is concluded by the "Save Resident" command, which
+triggers an update transaction to overwrite the previous record in the central
+database with the newly validated information.
+Page | 75
+
+---PAGE BREAK---
+
+Figure 3.8.5 Save Resident Confirmation
+Figure 3.8.5 illustrates the Save Resident Confirmation interface; a critical
+validation checkpoint integrated into the resident modification workflow. Following
+the administrator request to update a resident profile, this modal dialog is actuated
+to solicit explicit consent before committing changes to the database. The interface
+presents the query, "Are you sure you want to SAVE this resident?" coupled with
+binary "YES" and "NO" command options. This design pattern ensures data integrity
+by preventing accidental overwrites or unintended modifications, requiring the
+administrator to definitively affirm the accuracy of the edited information before the
+system executes the permanent update transaction.
+Page | 76
+
+---PAGE BREAK---
+
+Figure 3.8.6 Super Admin Feedback Dashboard
+Figure 3.8.6 displays the Super Admin Feedback Dashboard; a centralized monitoring
+interface designed to aggregate and manage community-driven reports. Located within the
+"Feedback" module, this view presents data in a structured tabular format, allowing
+administrators to efficiently scan through resident submissions. The table categorizes each
+entry by the resident's Name (e.g., Lee Sang-Hyeok, Ryu Min-Soek), the specific Activity type
+(e.g., "Feedback Submitted"), a brief Description of the concern (such as "Noise" complaints),
+and the Date of submission. To facilitate administrative action, the interface includes specific
+controls for each row, enabling the administrator to either "View" the full details of a specific
+complaint or "Delete" resolved or irrelevant entries, thereby ensuring the feedback loop
+remains organized and actionable.
+Page | 77
+
+---PAGE BREAK---
+
+Figure 3.8.7 Deletion of Feedback Confirmation
+Figure 3.8.7 depicts the Deletion of Feedback Confirmation interface, a safety
+protocol implemented within the system's feedback management module. Triggered
+when an administrator attempts to remove a specific entry from the feedback log, this
+modal dialog acts as a mandatory verification step to prevent accidental loss of
+community data. The interface displays a prominent warning query, "Are you sure you
+want to DELETE this Feedback?" and provides binary "YES" and "NO" options. This
+design ensures that the permanent removal of resident complaints or suggestions is a
+deliberate and confirmed action, thereby maintaining the accuracy and integrity of
+the administrative records.
+Page | 78
+
+---PAGE BREAK---
+
+Figure 3.8.8 View Residents Feedback
+Figure 3.8.8 presents the View Residents Feedback interface, a specialized
+detail view designed to provide the Super Admin with the comprehensive context of
+a specific resident report. Accessible via the main feedback dashboard, this screen
+displays the full qualitative data of a submission, prominently featuring the Subject
+(e.g., "Noise") and the Author's Identity (e.g., "Created By: Lee Sang-Hyeok"). The core
+function of this interface is to render the complete body of the resident's message,
+enabling the Super Admin to review detailed narratives regarding community issues,
+such as noise complaints or neighborhood disturbances, thereby facilitating a high-
+level assessment of community concerns before directing them to the appropriate
+officials or taking system-level action.
+Page | 79
+
+---PAGE BREAK---
+
+Figure 3.8.9 System Settings
+Figure 3.8.9 depicts the System Settings dashboard; a privileged interface
+designed for the comprehensive management of the application of core technical
+parameters. Accessible only to high-level administrators (Super Admins); this module
+categorizes configuration options into three distinct functional domains to streamline
+system administration. The "Camera & Detection Setup" section facilitates the
+calibration and management of the hardware integration and image processing
+algorithms used for garbage detection; "Notification Settings" governs the protocols
+and triggers for disseminating alerts to residents; and "System Maintenance" provides
+essential tools for routine database optimization and software upkeep. This
+centralized configuration hub ensures that critical operational variables can be
+adjusted dynamically to maintain system stability without requiring direct code
+intervention.
+Page | 80
+
+---PAGE BREAK---
+
+Figure 3.8.10 Camera & Detection Setup
+Figure 3.8.10 presents the Camera & Detection Setup interface, a specialized
+configuration panel within the System Settings module designed to bridge the physical
+surveillance hardware with the system's software logic. This interface allows the Super
+Admin to define critical technical parameters for the image processing unit, primarily
+through the RTSP Stream URL field, which designates the specific network address of
+the connected IP camera for real-time video feed ingestion. Additionally, the interface
+provides controls for resource management, including a Camera Quality dropdown to
+adjust video resolution (e.g., 480p) for bandwidth optimization, and a Detection
+Activity toggle (ON/OFF) that allows the administrator to manually enable or disable
+the automated garbage detection algorithm as operational requirements dictate.
+Page | 81
+
+---PAGE BREAK---
+
+Figure 3.9.0 Notification Settings
+Figure 3.9.0 displays the Notification Settings interface, a sub-module of the system
+configuration designed to regulate the frequency of automated alerts. The primary control
+mechanism shown is the Notification Cooldown parameter, which allows the Super Admin to
+enforce a mandatory time interval (depicted here as "30 Seconds") between successive
+notifications. This feature is critical for user experience optimization, preventing "alert
+fatigue" by ensuring that residents are not overwhelmed with repetitive messages during
+prolonged or continuous detection events. The interface is streamlined to focus solely on this
+operational constraint, providing a straightforward "SAVE" command to commit the timing
+adjustments to the backend logic.
+Page | 82
+
+---PAGE BREAK---
+
+Figure 3.9.1 System Maintenance
+Figure 3.9.1 illustrates the System Maintenance interface; a critical administrative
+utility designed to ensure data preservation and facilitate system auditing. This screen
+provides the Super Admin with a real-time status indicator of the automated data protection
+protocols, prominently displaying the Backup Status as "Active" to confirm that redundancy
+measures are operational. Furthermore, the interface includes a dedicated Download System
+Logs facility controlled by a "Download" command button. This feature enables the extraction
+of comprehensive activity logs from the server, allowing administrators to perform offline
+troubleshooting, security analysis, or compliance reporting by retrieving a chronological
+record of system events.
+Page | 83
+
+---PAGE BREAK---
+
+Figure 3.9.2 User Dashboard
+Figure 3.9.2 shows the User Dashboard, which serves as the main landing page
+after successful login. It displays the BARANGAY 133 logo and a personalized welcome
+message at the top, along with a left-side navigation panel for accessing system
+modules. The main content area presents important barangay announcements,
+scheduled services, and community events in card-based sections, as well as a Send
+Feedback field for user interaction.
+Page | 84
+
+---PAGE BREAK---
+
+Figure 3.9.3. Announcement Management Page
+Figure 3.9.3 displays the system’s dedicated Announcement Management Page, the
+administrative hub for controlling community updates. It maintains a clean and
+consistent layout with the sidebar navigation clearly highlighting the active section.
+The key function of this page is efficient content administration, supported by a search
+bar, a "Filter by Date" option, and a prominent "Add Announcement" button for
+creating new posts. Existing records are displayed clearly in a tabular format showing
+titles (e.g., "Water Interruption"), dates, and current status (e.g., "Publish" or "Draft"),
+along with direct action buttons to edit or delete specific items.
+Page | 85
+
+---PAGE BREAK---
+
+Figure 3.9.4. Delete Confirmation Modal
+Figure 3.9.4 displays the system’s Delete Confirmation Modal, a critical safety
+mechanism triggered within the Announcement Management page. It ensures data
+integrity by preventing the accidental removal of official records. The key function of
+this interface is to validate the user's intent, appearing as a prominent overlay that
+temporarily blocks interaction with the main table. The modal clearly presents a
+specific warning query, "Are you sure you want to delete the 'Ayuda - Senior Citizen'
+announcement? and provides distinct "YES" and "NO" buttons to either execute the
+permanent deletion or cancel the action.
+Page | 86
+
+---PAGE BREAK---
+
+Figure 3.9.5 Announcement Management Interface
+Figure 3.9.5, the Announcement Management Interface is designed to allow
+authorized users to create, view, and manage barangay announcements within the
+system. The interface follows a consistent layout, featuring a left-side navigation panel
+that highlights the active Announcement Management module for easy navigation.
+The main content area displays announcements in a tabular format, providing
+structured information such as the Title, Date, and Status of each announcement.
+Action icons are included in the Edit column, enabling administrators to modify or
+update existing announcements efficiently. An Add Announcement button is
+positioned at the upper section of the interface, allowing users to create new
+announcements as needed.
+Page | 87
+
+---PAGE BREAK---
+
+Figure 3.9.6 Announcement Management Interface
+Figure 3.9.6, this figure presents the Announcement Management – Add
+Announcement Form, which allows authorized users to create and publish new
+barangay announcements. The interface maintains consistency with the system
+layout, featuring a left-side navigation panel with the Announcement Management
+section highlighted. The main content area contains input fields for the Title and Body
+of the announcement, enabling administrators to enter detailed and relevant
+information. An Upload option is provided to attach supporting files or images to the
+announcement. A Submit button is positioned at the lower right of the form to finalize
+and publish the announcement.
+Page | 88
+
+---PAGE BREAK---
+
+Figure 3.9.7 Announcement Submission Confirmation Dialog
+Figure 3.9.7, this figure presents the Announcement Submission Confirmation
+Dialog, which appears when a user attempts to submit a new announcement within
+the Announcement Management module. The dialog is displayed as a pop-up overlay
+on top of the announcement form to prompt user confirmation before final
+submission. The message, “Are you sure you want to submit this Announcement?”,
+ensures that users intentionally proceed with publishing the announcement. Two
+action buttons, YES and NO, are provided to allow users to either confirm the
+submission or cancel the action and return to editing the announcement details. This
+confirmation step helps prevent accidental submissions and enhances the reliability
+of the announcement management process.
+Page | 89
+
+---PAGE BREAK---
+
+Figure 3.9.8 Add Announcement Form
+Figure 3.9.8 displays the system’s Add Announcement Form; the interface
+used for composing and publishing new community updates. It maintains the clean
+and consistent admin dashboard layout with the sidebar navigation. The key function
+of this page is content creation, shown here with the fields populated and ready for
+submission. The layout features a "Title" field (filled with "Water Interruption") and a
+"Body" section containing specific details about infrastructure maintenance,
+accompanied by an "Upload" option and a prominent "Save" button to finalize and
+broadcast the post to residents.
+Page | 90
+
+---PAGE BREAK---
+
+Figure 3.9.9. Save Confirmation Modal
+Figure 3.9.9 displays the system’s Save Confirmation Modal, a final verification step
+triggered within the Announcement Management page. It maintains the admin
+workflow by overlaying the active creation form, ensuring the user does not lose
+context. The key function of this prompt is to prevent the accidental publication of
+unverified information. The modal presents a clear query, "Are you sure you want to
+SAVE the 'Water Interruption' announcement? and requires the official to explicitly
+select "YES" to broadcast the update or "NO" to return to the editor.
+Page | 91
+
+---PAGE BREAK---
+
+Figure 3.10.0 Announcement Management Page
+Figure 3.10.0 displays the system’s dedicated Announcement Management
+Page, the administrative hub for controlling community updates. It maintains a clean
+and consistent layout with the sidebar navigation, clearly highlighting the active
+section. The key function of this page is efficient content administration, supported by
+a search bar, a "Filter by Date" option, and a prominent "Add Announcement" button
+for creating new posts. Existing records are displayed clearly in a tabular format
+showing titles (e.g., "Water Interruption"), dates, and current status (e.g., "Publish" or
+"Draft"), along with direct action buttons to edit or delete specific items.
+Page | 92
+
+---PAGE BREAK---
+
+Figure 4.0 Residents Activity History Page
+Figure 4.0 displays the system’s dedicated Residents Activity History Page, the central
+hub for monitoring user interactions and system security. It maintains a clean and
+consistent admin dashboard layout with the sidebar navigation clearly highlighting the
+active section. The key function of this page is to provide a transparent audit trail of
+resident actions, supported by a search bar and a "Filter by Date" feature for efficient
+log retrieval. Historical data is displayed clearly in a tabular format, detailing specific
+events with columns for "Name" (e.g., Lee Sang-Hyeok), "Activity" (e.g., Feedback
+Submitted, Login Attempt Failed), "Description", "Date", and "Status", allowing
+officials to track engagement and troubleshoot access issues.
+Page | 93
+
+---PAGE BREAK---
+
+Figure 4.1.0 Summary Reports Page
+Figure 4.1.0 displays the system’s dedicated Summary Reports Page, the
+administrative hub for generating and accessing data summaries. It maintains a clean
+and consistent admin dashboard layout with the sidebar navigation clearly
+highlighting the active section. The key function of this page is to allow officials to
+monitor system usage and resident engagement through documented logs, supported
+by a search bar, a "Filter by Date" option, and an "Add Reports" button. Generated
+files, such as "Announcement Summary" and "Residents Feedback Summary", are
+displayed clearly in a list format, each accompanied by a specific date and a "Download
+File" button for offline access and archiving.
+Page | 94
+
+---PAGE BREAK---
+
+Figure 4.1.1 Generate Report Form
+Figure 4.1.1 displays the system’s Generate Report Form; the specific interface
+used for creating customized administrative summaries. It maintains the clean and
+consistent admin dashboard layout with the sidebar navigation. The key function of
+this tool is to allow officials to extract and export specific system data for analysis. The
+layout features input fields for "Start Date" and "End Date" to define the timeframe,
+and a "Report Type" dropdown menu offering categories such as "Announcement,"
+"Feedback," "Activity History," and "Garbage Alert," supported by a prominent
+"Generate Report" button to process and compile the file.
+Page | 95
+
+---PAGE BREAK---
+
+Figure 4.1.2 Generate Report Confirmation Dialog
+Figure 4.1.2 This figure shows the Generate Report Confirmation Dialog within
+the Summary Reports module. The dialog appears when a user initiates the report
+generation process and serves as a confirmation step before proceeding. The
+message, “Are you sure you want to Generate this Report?”, prompts the user to verify
+their action to prevent unintended report generation. The dialog provides two
+response options, YES and NO, allowing the user to either continue with the report
+generation or cancel the process. A File Type selection option and a Generate Report
+button are available to define the output format and execute the report creation.
+Page | 96
+
+---PAGE BREAK---
+
+Figure 4.1.3 Feedback / Inquiries Interface
+Figure 4.1.3 This figure presents the Feedback / Inquiries Interface, which
+allows authorized users to view and manage feedback submitted by residents through
+the system. The interface follows the standard system layout, with a left-side
+navigation panel highlighting the active Feedback / Inquiries module for clear user
+orientation. The main content area displays feedback records in a tabular format,
+including columns for Name, Activity, Description, and Date. Each entry reflects a
+submitted feedback item, such as noise-related concerns, providing administrators
+with organized and easily accessible information. A View option is available for each
+record, allowing users to review the full details of the submitted feedback.
+Page | 97
+
+---PAGE BREAK---
+
+Figure 4.1.4 Feedback Details Page
+Figure 4.1.4 displays the system’s dedicated Feedback Details Page; the
+interface designed for reviewing specific resident concerns. It maintains the clean and
+consistent admin dashboard layout with the sidebar navigation clearly highlighting the
+active section. The key function of this view is to provide officials with the full context
+of a submitted report. The content area presents the specific issue, clearly identifying
+the category "Noise" and the source "Created By: Lee Sang-Hyeok", followed by a
+read-only text block containing the detailed message regarding the disturbance,
+ensuring officials have complete information for assessment.
+Page | 98
+
+---PAGE BREAK---
+
+Figure 4.1.5 Resident Dashboard Interface
+Figure 4.1.5 This figure illustrates the Mobile User Dashboard Interface of the
+Barangay 133 system, optimized for smartphone devices. The interface maintains
+consistency with the web-based version, displaying a personalized greeting,
+“Welcome! Juan Dela Cruz,” along with notification and menu icons at the top of the
+screen. On the left side, a collapsible navigation menu provides access to key modules,
+including Dashboard, Announcements, Garbage Alerts, Activity History, and Feedback,
+as well as a Logout option at the bottom. This menu allows users to easily navigate
+between features within the mobile application. The main content area presents
+information in a card-based layout, enabling users to quickly view announcements,
+alerts, and updates in a clear and organized manner. The responsive design ensures
+that content is displayed effectively across different screen sizes, supporting
+accessibility and ease of use.
+Page | 99
+
+---PAGE BREAK---
+
+Figure 4.1.6 Mobile Announcements Interface
+Figure 4.1.6 This figure presents the Mobile Announcements Interface of the
+Barangay 133 system. The screen is optimized for mobile devices and maintains a
+consistent layout with the desktop version. A personalized greeting, “Welcome! Juan
+Dela Cruz,” is displayed at the top, along with notification and menu icons for easy
+access. A vertical navigation menu is shown on the left side, providing access to
+Dashboard, Announcements, Garbage Alerts, Activity History, and Feedback, with the
+Announcements section highlighted to indicate the active module. The main content
+area displays announcement items in a stacked, card-style format, each accompanied
+by a “Read More” button to allow users to view full details.
+Page | 100
+
+---PAGE BREAK---
+
+Figure 4.1.7 Mobile Announcements Interface Continuation
+Figure 4.1.7 presents the Mobile Announcements List Interface of the
+Barangay 133 system. This screen displays a searchable and filterable list of barangay
+announcements optimized for mobile devices. A Search Announcements field is
+provided at the top to allow users to quickly locate specific announcements, while a
+Filter by option enables sorting based on selected criteria. The main content area
+shows announcement items in a vertical card-based layout, including the
+announcement title, date, and a “Read More” button for viewing complete details.
+Sample announcements displayed include Ayuda Senior Citizen, Schedule Power
+Outage, Emergency Water Interruption, and Hiring Job Offer. This interface ensures
+convenient access to important barangay updates and supports efficient information
+browsing for mobile users.
+Page | 101
+
+---PAGE BREAK---
+
+Figure 4.1.8 Mobile Announcements Interface Continuation
+Figure 4.1.8 presents the Mobile Announcement Details Interface, which is
+displayed when a user selects the “Read More” option from the mobile
+announcements list. This screen provides a detailed view of a selected announcement,
+such as “Ayuda Senior Citizen Details”, including the announcement title, date, and
+full descriptive content. The interface organizes information into clearly defined
+sections, including the Announcement Summary, Schedule and Distribution Details,
+and Requirements and Important Reminders, allowing users to easily understand
+eligibility, location, and necessary documents. A back navigation button is provided at
+the top of the screen to allow users to return to the announcements list.
+Page | 102
+
+---PAGE BREAK---
+
+Figure 4.1.9 Garbage Alert Interface
+Figure 4.1.9 presents the Garbage Alert Interface, a mobile-optimized module
+designed to facilitate real-time sanitation updates for residents. The interface is
+divided into two primary functional zones: a predictive alert banner and a historical
+service log. The upper section features a proactive notification card (e.g., "Collection
+tomorrow") equipped with a "Set Reminder" utility, enabling users to schedule
+personal alerts to ensure timely waste disposal. The lower section maintains a
+chronological record of completed service rounds, labeled "Collection Successfully"
+and accompanied by specific timestamps (e.g., "Monday, December 8, 2025"). This
+design not only assists residents in adhering to disposal schedules but also provides a
+transparent, verifiable history of municipal service performance.
+Page | 103
+
+---PAGE BREAK---
+
+Figure 4.2.0 Activity History Interface
+Figure 4.2.0 depicts the Activity History Interface, a user-centric auditing module
+designed to enhance account transparency and personal security. The interface employs a
+vertical timeline layout to present a chronological log of user interactions, visually grouped
+by temporal segments such as "Today" and "Yesterday." Each entry records specific system
+events—ranging from authentication activities like "Logged in from Chrome" to operational
+actions such as "Feedback submitted"—accompanied by precise timestamps. This design
+empowers residents to monitor their account usage patterns in real-time, allowing them to
+verify their own submissions and quickly identify any unrecognized access or discrepancies in
+their activity feed.
+Page | 104
+
+---PAGE BREAK---
+
+Figure 4.2.1 Feedback Interface
+Figure 4.2.1 illustrates the Feedback Interface, a sequential interaction workflow
+designed to facilitate structured communication between residents and barangay officials.
+The figure delineates the three-stage process for lodging complaints or suggestions, ensuring
+data accuracy and user confidence. The workflow initiates with the Composition Screen (Left),
+where residents articulate their concerns via the Subject and Message input fields; crucially,
+this form includes an "Attach a file" utility, empowering users to upload digital evidence (such
+as photographs of uncollected garbage) to substantiate their reports. Upon actuating the
+"SUBMIT" command, the system transitions to the Confirmation Screen (Center), which
+triggers a modal dialog querying, "Are you sure you want to submit this feedback?"—a
+safeguard designed to prevent accidental transmissions. Finally, the process concludes with
+the Completion Screen (Right), which displays a prominent "Feedback Submitted
+Successfully!" notification, providing the user with immediate visual verification that their
+report has been securely logged into the central database for administrative review.
+Page | 105
+
+---PAGE BREAK---
+
+Figure 4.2.2 Feedback Side Menu
+Figure 4.2.2 presents the Feedback Side Menu, the primary navigational
+framework designed to ensure seamless mobility within the resident's mobile
+interface. The figure captures the menu's active state, where the "Feedback" module
+is visually highlighted in black to indicate the user's current location within the
+application hierarchy. This collapsible navigation drawer aggregates all critical system
+functions—including "Dashboard," "Announcements," "Garbage Alerts," and "Activity
+History"—into a unified, accessible list, facilitating rapid transitions between different
+operational modules. Furthermore, the interface reinforces session security and
+personalization by displaying the authenticated user's identity ("Welcome! Juan Dela
+Page | 106
+
+---PAGE BREAK---
+

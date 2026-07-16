@@ -35,6 +35,7 @@ export function AuthProvider({ children }) {
     const { data } = await api.post('/auth/login', { username, password });
     localStorage.setItem('token', data.access_token);
     await fetchMe();
+    return data;
   };
 
   const logout = () => {
@@ -53,8 +54,12 @@ export function AuthProvider({ children }) {
     setUser((prev) => prev ? { ...prev, profile_pic: url } : prev);
   };
 
+  const updateUser = (data) => {
+    setUser((prev) => prev ? { ...prev, ...data } : prev);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, hasRole, mustChangePassword, updateProfilePic }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, hasRole, mustChangePassword, updateProfilePic, updateUser, fetchMe }}>
       {children}
     </AuthContext.Provider>
   );

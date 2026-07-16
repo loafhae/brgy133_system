@@ -6,9 +6,20 @@ from app.database import get_db
 from app.dependencies import require_role, get_current_user
 from app.models.user import User
 from app.models.feedback import Feedback
-from app.schemas.feedback import FeedbackCreate, FeedbackResponse
+from app.schemas.feedback import FeedbackCreate, FeedbackUpdate, FeedbackResponse
 
 router = APIRouter(prefix="/api/feedback", tags=["feedback"])
+
+
+def cleanup_old_feedback(db: Session) -> int:
+    cutoff = datetime.now() - timedelta(days=30)
+    old = db.query(Feedback).filter(Feedback.timestamp < cutoff).all()
+    count = len(old)
+    for f in old:
+        db.delete(f)
+    if count:
+        db.commit()
+    return count
 
 
 @router.get("", response_model=list[FeedbackResponse])
@@ -19,6 +30,7 @@ def list_feedback(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("super_admin", "official", "resident")),
 ):
+    cleanup_old_feedback(db)
     query = db.query(Feedback).options(joinedload(Feedback.author))
     if current_user.roles == "resident":
         query = query.filter(Feedback.created_by == current_user.user_id)
@@ -88,6 +100,33 @@ def submit_feedback(
     db.commit()
     db.refresh(feedback)
     return feedback
+
+
+@router.patch("/{feedback_id}")
+def resolve_feedback(
+    feedback_id: int,
+    body: FeedbackUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("super_admin", "official")),
+):
+    feedback = db.query(Feedback).filter(Feedback.feedback_id == feedback_id).first()
+    if not feedback:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    feedback.is_resolved = 1 if body.is_resolved else 0
+    feedback.resolved_at = datetime.now() if body.is_resolved else None
+    db.commit()
+    db.refresh(feedback)
+    return FeedbackResponse(
+        feedback_id=feedback.feedback_id,
+        created_by=feedback.created_by,
+        username=feedback.author.username if feedback.author else "Unknown",
+        subject=feedback.subject,
+        content=feedback.content,
+        timestamp=feedback.timestamp,
+        attachment_path=feedback.attachment_path,
+        is_resolved=feedback.is_resolved,
+        resolved_at=feedback.resolved_at,
+    )
 
 
 @router.delete("/{feedback_id}", status_code=status.HTTP_204_NO_CONTENT)

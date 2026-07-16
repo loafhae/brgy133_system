@@ -3,11 +3,11 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
   AppBar, Toolbar, Typography, IconButton, Avatar, Menu, MenuItem,
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, Snackbar,
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, Snackbar, TextField, Chip,
 } from '@mui/material';
 import {
   Menu as MenuIcon, Dashboard, People, Person, Campaign,
-  Feedback, Assessment, History, Settings, Logout, PhotoCamera,
+  Feedback, Assessment, History, Settings, Logout, PhotoCamera, Videocam,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/client';
@@ -17,21 +17,24 @@ const DRAWER_WIDTH = 260;
 const navItems = [
   { label: 'Dashboard', path: '/', icon: <Dashboard />, roles: ['super_admin', 'official'] },
   { label: 'Users', path: '/users', icon: <People />, roles: ['super_admin'] },
-  { label: 'Residents', path: '/residents', icon: <Person />, roles: ['super_admin'] },
-  { label: 'Announcements', path: '/announcements', icon: <Campaign />, roles: ['official'] },
+  { label: 'Announcements', path: '/announcements', icon: <Campaign />, roles: ['super_admin', 'official'] },
   { label: 'Feedback', path: '/feedback', icon: <Feedback />, roles: ['super_admin', 'official'] },
   { label: 'Activity Logs', path: '/activity', icon: <History />, roles: ['super_admin', 'official'] },
+  { label: 'Detection Logs', path: '/detection-logs', icon: <Videocam />, roles: ['super_admin', 'official'] },
   { label: 'Reports', path: '/reports', icon: <Assessment />, roles: ['super_admin', 'official'] },
   { label: 'Settings', path: '/settings', icon: <Settings />, roles: ['super_admin'] },
 ];
 
 export default function DashboardLayout() {
-  const { user, logout, hasRole, updateProfilePic } = useAuth();
+  const { user, logout, hasRole, updateProfilePic, updateUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [picDialog, setPicDialog] = useState(false);
+  const [profileDialog, setProfileDialog] = useState(false);
+  const [profileForm, setProfileForm] = useState({ username: '', first_name: '', last_name: '', middle_name: '', contact: '' });
+  const [savingProfile, setSavingProfile] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [snack, setSnack] = useState('');
   const fileRef = useRef(null);
@@ -62,7 +65,10 @@ export default function DashboardLayout() {
   const drawerContent = (
     <Box>
       <Box sx={{ p: 2, textAlign: 'center', borderBottom: 1, borderColor: 'divider' }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>Vision-Trak</Typography>
+        <Box component="img" src="/logo.png" alt="Logo" sx={{ width: 60, height: 60, mb: 1 }}
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+        <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: 0.5 }}>BARANGAY 133</Typography>
         <Typography variant="caption" color="text.secondary">
           {user?.role === 'super_admin' ? 'Super Admin' : 'Barangay Official'}
         </Typography>
@@ -90,8 +96,9 @@ export default function DashboardLayout() {
           <IconButton color="inherit" edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 2, display: { md: 'none' } }}>
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" noWrap sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
             {filteredItems.find((i) => i.path === location.pathname)?.label || 'Admin Panel'}
+            <Chip label={user?.role === 'super_admin' ? 'Super Admin' : 'Barangay Official'} size="small" color={user?.role === 'super_admin' ? 'error' : 'primary'} variant="outlined" sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.5)' }} />
           </Typography>
           <IconButton color="inherit" onClick={(e) => setAnchorEl(e.currentTarget)}>
             <Avatar src={user?.profile_pic} sx={{ bgcolor: 'primary.dark' }}>
@@ -101,6 +108,10 @@ export default function DashboardLayout() {
           <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
             <MenuItem disabled>
               <Typography variant="body2">{user?.username}</Typography>
+            </MenuItem>
+            <MenuItem onClick={() => { setAnchorEl(null); setProfileDialog(true); setProfileForm({ username: user?.username || '', first_name: user?.profile?.first_name || '', last_name: user?.profile?.last_name || '', middle_name: user?.profile?.middle_name || '', contact: user?.profile?.contact || '' }); }}>
+              <ListItemIcon><Person fontSize="small" /></ListItemIcon>
+              Edit Profile
             </MenuItem>
             <MenuItem onClick={() => { setAnchorEl(null); setPicDialog(true); }}>
               <ListItemIcon><PhotoCamera fontSize="small" /></ListItemIcon>
@@ -135,6 +146,36 @@ export default function DashboardLayout() {
         </DialogActions>
       </Dialog>
 
+      <Dialog open={profileDialog} onClose={() => setProfileDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Profile</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <TextField label="Username" fullWidth value={profileForm.username} onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })} />
+            <TextField label="First Name" fullWidth value={profileForm.first_name} onChange={(e) => setProfileForm({ ...profileForm, first_name: e.target.value })} />
+            <TextField label="Middle Name" fullWidth value={profileForm.middle_name} onChange={(e) => setProfileForm({ ...profileForm, middle_name: e.target.value })} />
+            <TextField label="Last Name" fullWidth value={profileForm.last_name} onChange={(e) => setProfileForm({ ...profileForm, last_name: e.target.value })} />
+            <TextField label="Contact" fullWidth value={profileForm.contact} onChange={(e) => setProfileForm({ ...profileForm, contact: e.target.value })} />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setProfileDialog(false)}>Cancel</Button>
+          <Button variant="contained" disabled={savingProfile} onClick={async () => {
+            setSavingProfile(true);
+            try {
+              const { data } = await api.put('/auth/profile', profileForm);
+              updateUser(data);
+              setSnack('Profile updated');
+              setProfileDialog(false);
+            } catch (err) {
+              const d = err.response?.data?.detail;
+              setSnack(Array.isArray(d) ? d.map((e) => e.msg).join(', ') : d || 'Error saving profile');
+            } finally {
+              setSavingProfile(false);
+            }
+          }}>{savingProfile ? 'Saving...' : 'Save'}</Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar open={!!snack} autoHideDuration={3000} onClose={() => setSnack('')} message={snack} />
 
       <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
@@ -155,8 +196,19 @@ export default function DashboardLayout() {
         </Drawer>
       </Box>
 
-      <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8 }}>
-        <Outlet />
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1, p: 3, mt: 8, minHeight: '100vh',
+          backgroundImage: 'url(/barangay.jpg)',
+          backgroundSize: 'cover',
+          backgroundAttachment: 'fixed',
+          backgroundPosition: 'center',
+        }}
+      >
+        <Box sx={{ bgcolor: 'rgba(255,255,255,0.92)', borderRadius: 2, p: 3, minHeight: '80vh' }}>
+          <Outlet />
+        </Box>
       </Box>
     </Box>
   );

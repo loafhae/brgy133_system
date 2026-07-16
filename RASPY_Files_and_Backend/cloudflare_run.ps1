@@ -133,7 +133,7 @@ if ($useCF) {
         Write-Host $beUrl -ForegroundColor Green
         $beUrl | Out-File "tunnel_be_url.txt" -Encoding ascii
         # Update Flutter app's API URL
-        $apiFile = Join-Path $rootDir "flutter_app\lib\services\api_service.dart"
+        $apiFile = Join-Path $rootDir "frontend\flutter_app\lib\services\api_service.dart"
         if (Test-Path $apiFile) {
             $content = Get-Content $apiFile -Raw
             $newApiUrl = "$beUrl/api"
@@ -160,7 +160,7 @@ if ($useCF) {
     $feUrl = $null
     $choice = Read-Host "[3/3] Start Frontend dev server? (Y/N)"
     if ($choice -eq "Y" -or $choice -eq "y") {
-        $feDir = Join-Path $rootDir "frontend-react"
+        $feDir = Join-Path $rootDir "frontend\frontend-react"
 
         # Start frontend dev server FIRST
         Write-Host "[3/3] Starting frontend dev server on port $fePort..."
@@ -198,7 +198,7 @@ if ($useCF) {
 
     $startFE = Read-Host "Start frontend dev server? (Y/N)"
     if ($startFE -eq "Y" -or $startFE -eq "y") {
-        $feDir = Join-Path $rootDir "frontend-react"
+        $feDir = Join-Path $rootDir "frontend\frontend-react"
         Start-Process -WindowStyle Normal -FilePath "cmd.exe" -ArgumentList "/c cd /d `"$feDir`" && title Frontend && npm run dev"
     }
 }

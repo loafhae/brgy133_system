@@ -121,10 +121,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   height: 48,
                   child: ElevatedButton(
                     onPressed: fp.submitting ? null : _submit,
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[700]),
                     child: fp.submitting
                         ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('SUBMIT', style: TextStyle(fontSize: 16, color: Colors.white)),
+                        : const Text('SUBMIT', style: TextStyle(fontSize: 16)),
                   ),
                 ),
               ),

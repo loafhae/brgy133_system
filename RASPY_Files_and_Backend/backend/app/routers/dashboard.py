@@ -23,6 +23,6 @@ def get_stats(
     return {
         "user_count": user_count,
         "resident_count": resident_count,
-        "pending_feedback": pending_feedback,
-        "total_detections": total_detections,
+        "feedback_count": pending_feedback,
+        "detection_count": total_detections,
     }

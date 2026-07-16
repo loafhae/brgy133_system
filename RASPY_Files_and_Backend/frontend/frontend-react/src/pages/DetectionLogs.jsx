@@ -22,12 +22,6 @@ export default function DetectionLogs() {
     { field: 'confidence_score', headerName: 'Confidence', width: 120, valueFormatter: (v) => `${(v * 100).toFixed(1)}%` },
     { field: 'notification_status', headerName: 'Notification', width: 130 },
     { field: 'timestamp', headerName: 'Timestamp', flex: 1, valueFormatter: (v) => v ? new Date(v).toLocaleString() : '' },
-    {
-      field: 'image', headerName: 'Image', width: 100,
-      renderCell: ({ row }) => (
-        <a href={`/snapshots/${row.image_path}`} target="_blank" rel="noreferrer">View</a>
-      ),
-    },
   ];
 
   return (

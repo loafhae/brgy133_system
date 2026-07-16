@@ -19,7 +19,7 @@ from app.services.auth_service import hash_password
 from app.routers import (
     auth, users, residents, announcements,
     feedback, dashboard, reports, activity,
-    settings as settings_router, detection, websocket,
+    settings as settings_router, detection, websocket, backup,
 )
 
 
@@ -47,14 +47,12 @@ def ensure_database_exists():
 def seed_default_data():
     db = next(get_db())
     try:
-        # ✅ FIXED: Filters using the exact spaced casing "Super Admin"
-        admin_exists = db.query(User).filter(User.roles == "Super Admin").first()
+        admin_exists = db.query(User).filter(User.roles == "super_admin").first()
         if not admin_exists:
             new_admin = User(
                 username="admin",
-                password=hash_password("admin123"), # Assumes your hash utility is imported
-                roles="Super Admin"
-                # ❌ DO NOT put is_active=True or must_change_password here
+                password=hash_password("admin123"),
+                roles="super_admin",
             )
             db.add(new_admin)
             db.commit()
@@ -68,6 +66,89 @@ def seed_default_data():
 async def lifespan(app: FastAPI):
     ensure_database_exists()
     Base.metadata.create_all(bind=engine)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE tbl_users ADD COLUMN profile_pic VARCHAR(500) AFTER roles"))
+            conn.commit()
+            print("[OK] Added profile_pic column to tbl_users")
+    except Exception:
+        pass
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE tbl_users ADD COLUMN must_change_password TINYINT DEFAULT 0 AFTER is_active"))
+            conn.commit()
+            print("[OK] Added must_change_password column to tbl_users")
+    except Exception:
+        pass
+    for col in ["date_posted", "is_published", "attachment_path"]:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"ALTER TABLE tbl_announcement ADD COLUMN `{col}` VARCHAR(500)"))
+                conn.commit()
+                print(f"[OK] Added {col} to tbl_announcement")
+        except Exception:
+            pass
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE tbl_announcement MODIFY date_posted DATETIME DEFAULT CURRENT_TIMESTAMP"))
+            conn.commit()
+    except Exception:
+        pass
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE tbl_announcement MODIFY is_published TINYINT DEFAULT 1"))
+            conn.commit()
+    except Exception:
+        pass
+    for col in ["subject", "timestamp", "attachment_path"]:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"ALTER TABLE tbl_feedback ADD COLUMN `{col}` VARCHAR(500)"))
+                conn.commit()
+                print(f"[OK] Added {col} to tbl_feedback")
+        except Exception:
+            pass
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE tbl_feedback MODIFY timestamp DATETIME DEFAULT CURRENT_TIMESTAMP"))
+            conn.commit()
+    except Exception:
+        pass
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE tbl_feedback ADD COLUMN created_by INT AFTER feedback_id"))
+            conn.commit()
+            print("[OK] Added created_by to tbl_feedback")
+    except Exception:
+        pass
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE tbl_feedback ADD COLUMN is_resolved INT DEFAULT 0"))
+            conn.commit()
+            print("[OK] Added is_resolved to tbl_feedback")
+    except Exception:
+        pass
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE tbl_feedback ADD COLUMN resolved_at DATETIME"))
+            conn.commit()
+            print("[OK] Added resolved_at to tbl_feedback")
+    except Exception:
+        pass
+    for col in ["action_type", "target_table", "target_id", "description", "ip_address", "timestamp"]:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"ALTER TABLE tbl_audit_log ADD COLUMN `{col}` VARCHAR(500)"))
+                conn.commit()
+                print(f"[OK] Added {col} to tbl_audit_log")
+        except Exception:
+            pass
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE tbl_audit_log MODIFY timestamp DATETIME DEFAULT CURRENT_TIMESTAMP"))
+            conn.commit()
+    except Exception:
+        pass
     seed_default_data()
     yield
 
@@ -84,7 +165,7 @@ setup_cors(app)
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
-_snapshots_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "snapshots")
+_snapshots_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "snapshots")
 if not os.path.exists(_snapshots_dir):
     os.makedirs(_snapshots_dir, exist_ok=True)
 app.mount("/snapshots", StaticFiles(directory=_snapshots_dir), name="snapshots")
@@ -101,6 +182,7 @@ app.include_router(activity.router)
 app.include_router(settings_router.router)
 app.include_router(detection.router)
 app.include_router(websocket.router)
+app.include_router(backup.router)
 
 
 @app.get("/")

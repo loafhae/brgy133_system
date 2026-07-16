@@ -1,10 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({Key? key}) : super(key: key);
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -26,47 +25,43 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // Hits your specific FastAPI legacy route structure mapping exactly
-      final url = Uri.parse('http://192.168.1.150:3000/api/auth/login');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'username': _usernameController.text.trim(),
-          'password': _passwordController.text,
-        }),
-      );
+      final data = await ApiService.post('/auth/login', {
+        'username': _usernameController.text.trim(),
+        'password': _passwordController.text,
+      }, auth: false);
 
-      final data = jsonDecode(response.body);
-
-if (response.statusCode == 200) {
       final prefs = await SharedPreferences.getInstance();
-      
-      // Save Token parameters safely
-      await prefs.setString('token', data['access_token']);
+
+      await prefs.setString('auth_token', data['access_token']);
       await prefs.setString('username', _usernameController.text.trim());
-      
-      // ✅ FIXED: Navigate down into the 'user' object structure and pull 'roles'
-      final String userRole = data['user']['roles'] ?? 'Resident';
-      final int userId = data['user']['user_id'] ?? 0;
+
+      final String userRole = data['user']?['roles'] ?? 'resident';
+
+      if (userRole != 'resident') {
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'This app is for residents only. Please use the web portal.';
+          });
+        }
+        return;
+      }
+
+      final int userId = data['user']?['user_id'] ?? 0;
+      final String? profilePic = data['user']?['profile_pic'];
 
       await prefs.setString('role', userRole);
       await prefs.setInt('user_id', userId);
+      if (profilePic != null) {
+        await prefs.setString('profile_pic', profilePic);
+      }
 
       if (mounted) {
-        // ✅ FIXED: Check the correctly parsed userRole variable string
-        if (userRole == 'super_admin' || userRole == 'barangay_official' || userRole == 'Super Admin') {
-          Navigator.pushReplacementNamed(context, '/dashboard');
-        } else {
-          setState(() {
-            _errorMessage = "Access denied: Resident app coming soon.";
-          });
-        }
+        Navigator.pushReplacementNamed(context, '/dashboard');
       }
-    }
     } catch (e) {
+      final msg = e.toString().replaceAll('Exception: ', '');
       setState(() {
-        _errorMessage = "Could not connect to backend server.";
+        _errorMessage = msg;
       });
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -110,7 +105,7 @@ if (response.statusCode == 200) {
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 1),
                   ),
                   const SizedBox(height: 5),
-                  const Text('User Authentication', style: TextStyle(color: Colors.grey)),
+                  const Text('Resident Portal', style: TextStyle(color: Colors.grey)),
                   const SizedBox(height: 20),
                   if (_errorMessage.isNotEmpty)
                     Padding(
@@ -143,15 +138,27 @@ if (response.statusCode == 200) {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _handleLogin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF28A745),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                      ),
                       child: _isLoading
                           ? const CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white))
                           : const Text('LOGIN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () => showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Forgot Password'),
+                        content: const Text('Please contact the barangay office to reset your password.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFFc62828), fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),

@@ -9,6 +9,9 @@ from app.models.audit import AuditLog
 
 router = APIRouter(tags=["websocket"])
 
+from datetime import timedelta
+from app.models.settings import SystemSetting
+
 R_PRES = 100
 R_MISS = 60
 DEFAULT_CAMERAS = {
@@ -21,6 +24,7 @@ camera_states = {}
 focused_camera_id = None
 active_camera_id = None
 last_event_time = 0
+_last_notification_time = None
 
 
 def _ensure_cameras():
@@ -73,8 +77,27 @@ def get_status():
     }
 
 
+def _get_cooldown_seconds(db) -> int:
+    try:
+        setting = db.query(SystemSetting).filter(
+            SystemSetting.config_key == "notification_cooldown"
+        ).first()
+        return int(setting.config_value) if setting else 300
+    except Exception:
+        return 300
+
+
+def _should_send_notification(db) -> bool:
+    global _last_notification_time
+    cooldown = _get_cooldown_seconds(db)
+    if _last_notification_time is None:
+        return True
+    elapsed = time.time() - _last_notification_time
+    return elapsed >= cooldown
+
+
 def process_detection_event(payload):
-    global focused_camera_id, active_camera_id, last_event_time
+    global focused_camera_id, active_camera_id, last_event_time, _last_notification_time
 
     event_type = payload.get("event_type", "unknown")
     camera_id = payload.get("camera_id", 0)
@@ -145,16 +168,19 @@ def process_detection_event(payload):
             db.add(log)
             db.flush()
 
-            notif = Notification(
-                log_id=log.log_id,
-                notification_type="detection",
-                title=f"Truck Detected - {camera_name}",
-                message=f"Garbage truck detected at {camera_name} ({confidence*100:.0f}% confidence)",
-                status="sent",
-                sent_at=datetime.now(),
-                target_group="officials",
-            )
-            db.add(notif)
+            notif = None
+            if _should_send_notification(db):
+                notif = Notification(
+                    log_id=log.log_id,
+                    notification_type="detection",
+                    title="Garbage Truck Detected",
+                    message="The garbage truck is now in your area. Please prepare your waste for collection.",
+                    status="sent",
+                    sent_at=datetime.now(),
+                    target_group="residents",
+                )
+                db.add(notif)
+                _last_notification_time = time.time()
 
             audit = AuditLog(
                 user_id=None,
@@ -167,7 +193,8 @@ def process_detection_event(payload):
             db.commit()
 
             return _build_broadcast(event_type, camera_id, camera_name, confidence,
-                                    log.log_id, notif.notification_id, image_path, now_str,
+                                    log.log_id, notif.notification_id if notif else None,
+                                    image_path, now_str,
                                     f"Garbage truck DETECTED at {camera_name} \u2014 LOCKED ON")
 
         elif event_type == "truck_departed":
@@ -205,17 +232,6 @@ def process_detection_event(payload):
             db.add(log)
             db.flush()
 
-            notif = Notification(
-                log_id=log.log_id,
-                notification_type="detection",
-                title=f"Truck Departed - {camera_name}",
-                message=f"Garbage truck left {camera_name}",
-                status="sent",
-                sent_at=datetime.now(),
-                target_group="officials",
-            )
-            db.add(notif)
-
             audit = AuditLog(
                 user_id=None,
                 action_type="truck_departed",
@@ -227,7 +243,7 @@ def process_detection_event(payload):
             db.commit()
 
             return _build_broadcast(event_type, camera_id, camera_name, confidence,
-                                    log.log_id, notif.notification_id, image_path, now_str,
+                                    log.log_id, None, image_path, now_str,
                                     f"Garbage truck LEFT {camera_name} \u2014 SCANNING")
 
     except Exception as e:
@@ -271,7 +287,7 @@ def _build_broadcast(event_type, camera_id, camera_name, confidence,
         "confidence": confidence,
         "log_id": log_id,
         "notification_id": notif_id,
-        "notification_status": "sent",
+        "notification_status": "sent" if notif_id else "none",
         "image_path": image_path,
         "timestamp": now,
         "message": message,

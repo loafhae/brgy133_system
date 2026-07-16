@@ -6,6 +6,7 @@ from app.database import get_db
 from app.dependencies import require_role
 from app.models.user import User
 from app.models.announcement import Announcement
+from app.models.detection import Notification
 from app.schemas.announcement import AnnouncementCreate, AnnouncementUpdate, AnnouncementResponse
 
 UPLOAD_DIR = "uploads/announcements"
@@ -70,6 +71,18 @@ def create_announcement(
         attachment_path=attachment_path,
     )
     db.add(announcement)
+    db.flush()
+
+    if is_published:
+        notif = Notification(
+            notification_type="announcement",
+            title="New Announcement",
+            message=title,
+            status="pending",
+            target_group="residents",
+        )
+        db.add(notif)
+
     db.commit()
     db.refresh(announcement)
     return announcement

@@ -11,6 +11,7 @@ import 'screens/announcement_detail_screen.dart';
 import 'screens/garbage_alerts_screen.dart';
 import 'screens/activity_history_screen.dart';
 import 'screens/feedback_screen.dart';
+import 'screens/profile_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,21 +32,34 @@ class MyApp extends StatelessWidget {
         title: 'Barangay 133',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          colorSchemeSeed: Colors.blue,
+          colorSchemeSeed: const Color(0xFFc62828),
           useMaterial3: true,
-          appBarTheme: const AppBarTheme(centerTitle: true),
+          brightness: Brightness.light,
+          appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFc62828),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+            ),
+          ),
+          cardTheme: CardThemeData(
+            elevation: 1,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
         ),
-        // This tells the engine exactly where to look first when the web browser page triggers
-        initialRoute: '/login', 
+        initialRoute: '/login',
         routes: {
-          '/login': (context) => LoginScreen(), 
+          '/login': (context) => LoginScreen(),
           '/change-password': (context) => const ChangePasswordScreen(),
-          '/dashboard': (context) =>  DashboardScreen(),
+          '/dashboard': (context) => const DashboardScreen(),
           '/announcements': (context) => const AnnouncementsScreen(),
           '/announcement-detail': (context) => const AnnouncementDetailScreen(),
           '/garbage-alerts': (context) => const GarbageAlertsScreen(),
           '/activity-history': (context) => const ActivityHistoryScreen(),
           '/feedback': (context) => const FeedbackScreen(),
+          '/profile': (context) => const ProfileScreen(),
         },
       ),
     );

@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'user_management_view.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+  const DashboardScreen({super.key});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();

@@ -61,7 +61,7 @@ def receive_truck_status(
         title=f"{action_label} - {body.camera_name}",
         message=f"Garbage truck {event_type.replace('_', ' ')} at {body.camera_name}",
         status="pending",
-        target_group="officials",
+        target_group="residents",
     )
     db.add(notification)
 
@@ -121,6 +121,7 @@ def list_notifications(
 ):
     notifs = (
         db.query(Notification)
+        .filter(Notification.target_group == "residents")
         .order_by(Notification.created_at.desc())
         .limit(50)
         .all()
@@ -144,35 +145,41 @@ def list_notifications(
 def get_detection_status(
     db: Session = Depends(get_db),
 ):
-    latest = db.query(DetectionLog).order_by(DetectionLog.timestamp.desc()).first()
-    if not latest:
-        return {"status": "no_detections", "last_detection": None}
-
-    # Query the latest truck event from AuditLog to determine presence
-    latest_event = (
-        db.query(AuditLog)
+    latest_notif = (
+        db.query(Notification)
         .filter(
-            AuditLog.target_table == "tbl_DetectionLog",
-            AuditLog.action_type.in_(["truck_present", "truck_departed"])
+            Notification.notification_type == "detection",
+            Notification.target_group == "residents",
         )
-        .order_by(AuditLog.log_id.desc())
+        .order_by(Notification.created_at.desc())
         .first()
     )
 
-    status_str = "idle"
-    if latest_event:
-        if latest_event.action_type == "truck_present":
-            status_str = "active"
-    else:
-        # Fallback if no audit logs exist yet
-        status_str = "active" if latest.notification_status == "sent" else "pending"
+    if not latest_notif:
+        return {"status": "no_detections", "last_detection": None}
+
+    cooldown = 300
+    try:
+        from app.models.settings import SystemSetting
+        setting = db.query(SystemSetting).filter(
+            SystemSetting.config_key == "notification_cooldown"
+        ).first()
+        if setting:
+            cooldown = int(setting.config_value)
+    except Exception:
+        pass
+
+    now = datetime.now()
+    is_active = False
+    if latest_notif.sent_at:
+        elapsed = (now - latest_notif.sent_at).total_seconds()
+        is_active = elapsed < cooldown
 
     return {
-        "status": status_str,
+        "status": "active" if is_active else "idle",
         "last_detection": {
-            "log_id": latest.log_id,
-            "camera_name": latest.camera_name,
-            "confidence": latest.confidence_score,
-            "timestamp": str(latest.timestamp) if latest.timestamp else None,
+            "title": latest_notif.title,
+            "message": latest_notif.message,
+            "timestamp": str(latest_notif.sent_at) if latest_notif.sent_at else None,
         },
     }

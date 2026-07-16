@@ -41,7 +41,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 # SERVER_URL = change this to your PC's IP address
 # Find it by running: ipconfig  (look for IPv4)
 # ==========================================
-SERVER_URL = "wss://afternoon-promotional-hispanic-orchestra.trycloudflare.com/ws"
+SERVER_URL = "wss://recognition-tomatoes-baskets-civilian.trycloudflare.com/ws"
 SNAPSHOT_DIR = os.path.join(script_dir, "snapshots")
 
 _ws = None

@@ -5,11 +5,11 @@ import DashboardLayout from './layouts/DashboardLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
-import Residents from './pages/Residents';
 import Announcements from './pages/Announcements';
 import Feedback from './pages/Feedback';
 import Reports from './pages/Reports';
 import ActivityLogs from './pages/ActivityLogs';
+import DetectionLogs from './pages/DetectionLogs';
 import Settings from './pages/Settings';
 import ChangePassword from './pages/ChangePassword';
 
@@ -28,9 +28,10 @@ export default function App() {
               <Route path="feedback" element={<Feedback />} />
               <Route path="reports" element={<Reports />} />
               <Route path="activity" element={<ActivityLogs />} />
+              <Route path="detection-logs" element={<DetectionLogs />} />
             </Route>
           </Route>
-          <Route element={<ProtectedRoute roles={['official']} />}>
+          <Route element={<ProtectedRoute roles={['super_admin', 'official']} />}>
             <Route element={<DashboardLayout />}>
               <Route path="announcements" element={<Announcements />} />
             </Route>
@@ -38,7 +39,6 @@ export default function App() {
           <Route element={<ProtectedRoute roles={['super_admin']} />}>
             <Route element={<DashboardLayout />}>
               <Route path="users" element={<Users />} />
-              <Route path="residents" element={<Residents />} />
               <Route path="settings" element={<Settings />} />
             </Route>
           </Route>

@@ -1,10 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 
 class UserManagementView extends StatefulWidget {
-  const UserManagementView({super.key});
+  const UserManagementView({Key? key}) : super(key: key);
 
   @override
   State<UserManagementView> createState() => _UserManagementViewState();
@@ -35,26 +33,17 @@ class _UserManagementViewState extends State<UserManagementView> {
 
   Future<void> _fetchUsers() async {
     setState(() => _isLoading = true);
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
     try {
-      final response = await http.get(
-      Uri.parse('http://192.168.1.150:3000/api/users'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
+      final data = await ApiService.getList('/users');
+      if (mounted) {
         setState(() {
-          _users = jsonDecode(response.body);
+          _users = data;
           _isLoading = false;
         });
-      } else {
-        setState(() => _isLoading = false);
       }
     } catch (e) {
       debugPrint("Error loading system users: $e");
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -119,18 +108,9 @@ class _UserManagementViewState extends State<UserManagementView> {
   }
 
   Future<void> _executeDelete(int userId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
     try {
-      final response = await http.delete(
-        Uri.parse('http://192.168.1.150:3000/api/users/$userId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        _fetchUsers();
-      }
+      await ApiService.delete('/users/$userId');
+      _fetchUsers();
     } catch (e) {
       debugPrint("Delete operations failed: $e");
     }
@@ -142,9 +122,6 @@ class _UserManagementViewState extends State<UserManagementView> {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
     final payload = {
       'username': _usernameController.text.trim(),
       'roles': _selectedRole,
@@ -154,28 +131,13 @@ class _UserManagementViewState extends State<UserManagementView> {
     }
 
     try {
-      http.Response response;
-      final headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
-
       if (_currentSubView == 'add') {
-        response = await http.post(
-          Uri.parse('http://192.168.1.150:3000/api/users/'),
-          headers: headers,
-          body: jsonEncode(payload),
-        );
+        await ApiService.post('/users', payload);
       } else {
         final int targetId = _selectedUser!['user_id'];
-        response = await http.put(
-          Uri.parse('http://192.168.1.150:3000/api/users/$targetId'),
-          headers: headers,
-          body: jsonEncode(payload),
-        );
+        await ApiService.put('/users/$targetId', payload);
       }
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (mounted) {
         setState(() => _currentSubView = 'list');
         _fetchUsers();
       }
