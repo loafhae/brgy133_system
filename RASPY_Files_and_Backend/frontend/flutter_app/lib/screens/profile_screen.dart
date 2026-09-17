@@ -1,6 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 
@@ -47,37 +51,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: false,
+      withData: kIsWeb, // Ensures raw bytes are loaded in browser memory
     );
     if (result == null || result.files.isEmpty) return;
 
-    final file = File(result.files.single.path!);
     setState(() => _uploading = true);
 
     try {
-      final data = await ApiService.postMultipart(
-        '/auth/upload-profile-pic',
-        {},
-        file: file,
-        fileField: 'file',
-      );
-      if (mounted) {
-        setState(() {
-          _profilePicUrl = data['profile_pic'];
-        });
-        final prefs = await SharedPreferences.getInstance();
-        if (data['profile_pic'] != null) {
-          await prefs.setString('profile_pic', data['profile_pic']);
+      Map<String, dynamic> data;
+
+      if (kIsWeb) {
+        // --- Web Upload (uses bytes and strict content type) ---
+        final fileBytes = result.files.single.bytes;
+        final fileName = result.files.single.name;
+
+        if (fileBytes == null) {
+          throw Exception("Could not read file data.");
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile picture updated!')),
+
+        final uri = Uri.parse('${ApiService.baseUrl}/api/auth/upload-profile-pic');
+        final request = http.MultipartRequest('POST', uri);
+
+        final token = await ApiService.getToken();
+        if (token != null) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+
+        final isPng = fileName.toLowerCase().endsWith('.png');
+        final mediaType = MediaType('image', isPng ? 'png' : 'jpeg');
+
+        request.files.add(http.MultipartFile.fromBytes(
+          'file',
+          fileBytes,
+          filename: fileName,
+          contentType: mediaType, // Tells FastAPI this is an image
+        ));
+
+        final streamed = await request.send();
+        final response = await http.Response.fromStream(streamed);
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          data = jsonDecode(response.body) as Map<String, dynamic>;
+        } else {
+          throw Exception('Upload failed with status ${response.statusCode}');
+        }
+      } else {
+        // --- Native Mobile Upload (Android / iOS) ---
+        final file = File(result.files.single.path!);
+        data = await ApiService.postMultipart(
+          '/auth/upload-profile-pic',
+          {},
+          file: file,
+          fileField: 'file',
         );
       }
+
+      if (!mounted) return;
+      setState(() {
+        _profilePicUrl = data['profile_pic'];
+      });
+      final prefs = await SharedPreferences.getInstance();
+      if (data['profile_pic'] != null) {
+        await prefs.setString('profile_pic', data['profile_pic']);
+      }
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile picture updated!')),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Upload failed: $e')),
+      );
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -95,7 +141,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(4),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5)),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 5)),
             ],
           ),
           child: Column(
@@ -138,7 +184,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFc62828).withOpacity(0.1),
+                  color: const Color(0xFFc62828).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(_role.replaceAll('_', ' ').toUpperCase(),

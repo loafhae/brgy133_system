@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/announcement.dart';
 import '../providers/announcement_provider.dart';
 
 class AnnouncementsScreen extends StatefulWidget {
@@ -52,7 +53,12 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                 if (ap.error != null) return Center(child: Text('Error: ${ap.error}'));
                 if (ap.announcements.isEmpty) return const Center(child: Text('No announcements'));
 
-                final filtered = ap.announcements.where((a) =>
+                final List<Announcement> safeList = ap.announcements.map((item) {
+                  if (item is Announcement) return item;
+                  return Announcement.fromJson(Map<String, dynamic>.from(item as Map));
+                }).toList();
+
+                final filtered = safeList.where((a) =>
                   a.title.toLowerCase().contains(_searchCtrl.text.toLowerCase())
                 ).toList();
 

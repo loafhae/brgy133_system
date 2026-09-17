@@ -1,28 +1,20 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from app.database import get_db
-from app.dependencies import get_current_user
 from app.models.user import User, Resident
-from app.models.feedback import Feedback
-from app.models.detection import DetectionLog
+# from app.models.feedback import Feedback # Uncomment if you have a feedback model
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
-
 @router.get("/stats")
-def get_stats(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    user_count = db.query(func.count(User.user_id)).scalar()
-    resident_count = db.query(func.count(Resident.resident_id)).scalar()
-    pending_feedback = db.query(func.count(Feedback.feedback_id)).scalar()
-    total_detections = db.query(func.count(DetectionLog.log_id)).scalar()
+def get_dashboard_stats(db: Session = Depends(get_db)):
+    total_users = db.query(User).count()
+    total_residents = db.query(Resident).count()
+    # total_feedback = db.query(Feedback).count() # adjust as needed
+    total_feedback = 0 
 
     return {
-        "user_count": user_count,
-        "resident_count": resident_count,
-        "feedback_count": pending_feedback,
-        "detection_count": total_detections,
+        "total_users": total_users,
+        "total_residents": total_residents,
+        "total_feedback": total_feedback
     }

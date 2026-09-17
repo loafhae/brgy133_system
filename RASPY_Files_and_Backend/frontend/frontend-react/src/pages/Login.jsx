@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, TextField, Button, Typography, Alert, Link, Dialog, DialogTitle, DialogContent, DialogActions, Card, CardActionArea } from '@mui/material';
+import { Box, TextField, Button, Typography, Alert, Link, Card, CardActionArea } from '@mui/material';
 import { AdminPanelSettings, Badge } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -17,7 +17,6 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [forgotOpen, setForgotOpen] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,14 +24,16 @@ export default function Login() {
     setLoading(true);
     try {
       const result = await login(username, password);
-      if (result.user.roles !== selectedRole) {
+      const userRole = result?.role || result?.user?.role;
+      
+      if (userRole !== selectedRole) {
         setError(`This account is not a ${selectedRole === 'super_admin' ? 'Super Admin' : 'Barangay Official'}. Please select the correct role.`);
         setLoading(false);
         return;
       }
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Login failed');
+      setError(err.response?.data?.detail || err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -99,24 +100,17 @@ export default function Login() {
                 sx={{ py: 1.5, fontWeight: 700 }}>
                 {loading ? 'Signing in...' : 'LOGIN'}
               </Button>
-              <Box sx={{ textAlign: 'center', mt: 2 }}>
-                <Link component="button" variant="body2" onClick={() => setForgotOpen(true)}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+                <Link component="button" variant="body2" type="button" onClick={() => navigate('/forgot-password')}>
                   Forgot Password?
+                </Link>
+                <Link component="button" variant="body2" type="button" onClick={() => navigate('/register')}>
+                  Register Account
                 </Link>
               </Box>
             </form>
           </>
         )}
-
-        <Dialog open={forgotOpen} onClose={() => setForgotOpen(false)} maxWidth="xs" fullWidth>
-          <DialogTitle>Forgot Password</DialogTitle>
-          <DialogContent>
-            <Typography>Please contact the barangay office to reset your password.</Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setForgotOpen(false)}>Back to Login</Button>
-          </DialogActions>
-        </Dialog>
       </Box>
     </Box>
   );

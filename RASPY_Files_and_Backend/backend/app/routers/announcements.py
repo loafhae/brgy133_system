@@ -2,9 +2,10 @@ import os, shutil, uuid
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Form, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import Optional
+from firebase_admin import messaging
 from app.database import get_db
 from app.dependencies import require_role
-from app.models.user import User
+from app.models.user import User, Resident
 from app.models.announcement import Announcement
 from app.models.detection import Notification
 from app.schemas.announcement import AnnouncementCreate, AnnouncementUpdate, AnnouncementResponse
@@ -82,6 +83,24 @@ def create_announcement(
             target_group="residents",
         )
         db.add(notif)
+
+        # Broadcast FCM Push Notification to all residents with a saved token
+        residents_with_tokens = db.query(Resident).filter(Resident.fcm_token != None).all()
+        tokens = [r.fcm_token for r in residents_with_tokens if r.fcm_token]
+
+        if tokens:
+            message = messaging.MulticastMessage(
+                notification=messaging.Notification(
+                    title=f"New Announcement: {title}",
+                    body=content,
+                ),
+                tokens=tokens,
+            )
+            try:
+                response = messaging.send_each_for_multicast(message)
+                print(f"Successfully sent FCM announcements: {response.success_count} success, {response.failure_count} failures")
+            except Exception as e:
+                print(f"Failed to send FCM notifications: {e}")
 
     db.commit()
     db.refresh(announcement)

@@ -34,7 +34,7 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
     _timer = Timer.periodic(const Duration(seconds: 10), (_) => _fetch());
   }
 
-  Future<void> _fetch() async {
+Future<void> _fetch() async {
     try {
       final statusData = await ApiService.get('/detection/status');
       final s = statusData['status'] as String?;
@@ -46,9 +46,16 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
 
     try {
       final notifs = await ApiService.getList('/detection/notifications');
-      if (mounted) setState(() => _history = notifs);
+      if (mounted) {
+        setState(() {
+          _history = notifs.where((n) {
+            final type = n['notification_type'] ?? n['type'];
+            final title = (n['title'] ?? '').toString().toLowerCase();
+            return type == 'detection' || title.contains('truck') || title.contains('garbage');
+          }).toList();
+        });
+      }
     } catch (_) {
-      // keep existing history
     }
 
     if (mounted) setState(() => _loading = false);

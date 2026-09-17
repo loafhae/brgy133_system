@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 class AuditLog(Base):
-    __tablename__ = "tbl_audit_log" 
+    __tablename__ = "tbl_audit_log"
 
     log_id = Column(Integer, primary_key=True, autoincrement=True)
     action_type = Column(String(255), nullable=False)
@@ -16,6 +16,6 @@ class AuditLog(Base):
     user_id = Column(Integer, ForeignKey("tbl_users.user_id", ondelete="CASCADE"), nullable=False)
 
     user = relationship(
-        "User", 
+        "User",
         primaryjoin="AuditLog.user_id == User.user_id"
     )

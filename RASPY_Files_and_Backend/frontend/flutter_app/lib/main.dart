@@ -1,3 +1,6 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart'; // <-- 1. Add this import for FCM
+import 'firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
@@ -13,7 +16,25 @@ import 'screens/activity_history_screen.dart';
 import 'screens/feedback_screen.dart';
 import 'screens/profile_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Firebase using the generated options for Web, Android, or iOS
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
+  // <-- 2. Listen to incoming foreground push notifications here -->
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    print('Foreground notification received: ${message.notification?.title}');
+    // You can trigger custom in-app alerts or banners here!
+  });
+
+  // Handle background notification taps when the user clicks a push alert
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    print('User tapped notification: ${message.data}');
+  });
+  
   runApp(const MyApp());
 }
 
@@ -51,7 +72,7 @@ class MyApp extends StatelessWidget {
         ),
         initialRoute: '/login',
         routes: {
-          '/login': (context) => LoginScreen(),
+          '/login': (context) => const LoginScreen(),
           '/change-password': (context) => const ChangePasswordScreen(),
           '/dashboard': (context) => const DashboardScreen(),
           '/announcements': (context) => const AnnouncementsScreen(),

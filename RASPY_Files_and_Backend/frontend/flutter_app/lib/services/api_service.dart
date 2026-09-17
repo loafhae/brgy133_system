@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String _baseUrl = 'https://recognition-tomatoes-baskets-civilian.trycloudflare.com/api';
+  static const String _baseUrl = 'http://localhost:8000/api';
   static String get baseUrl => _baseUrl.replaceAll('/api', '');
   static const String _tokenKey = 'auth_token';
 

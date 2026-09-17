@@ -4,21 +4,22 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 class User(Base):
-    # ✅ Matches your lowercase database table name exactly
     __tablename__ = "tbl_users"
 
-    # ✅ Physical table schema columns matching phpMyAdmin rows
     user_id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), unique=True, nullable=False, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=True) # Added for email & recovery
     password = Column(String(255), nullable=False)
     roles = Column(String(50), nullable=False)
     profile_pic = Column(String(500))
     is_active = Column(Boolean, default=True)
+    is_approved = Column(Integer, default=1)  # 1 for admins/officials, 0 for pending residents
+    reset_otp = Column(String(10), nullable=True) # For password recovery code
+    otp_expiry = Column(DateTime, nullable=True) # For code expiration
     must_change_password = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    # ✅ Kept structural profile relationships clean
     admin_profile = relationship("Admin", back_populates="user", uselist=False, cascade="all, delete-orphan")
     official_profile = relationship("Official", back_populates="user", uselist=False, cascade="all, delete-orphan")
     resident_profile = relationship("Resident", back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -34,7 +35,7 @@ class Admin(Base):
     birthday = Column(Date)
     gender = Column(Enum("Male", "Female", "Other", name="gender_enum"))
     contact = Column(String(20))
-    
+   
     user = relationship("User", back_populates="admin_profile")
 
 
@@ -48,7 +49,7 @@ class Official(Base):
     birthday = Column(Date)
     gender = Column(Enum("Male", "Female", "Other", name="gender_enum_official"))
     contact = Column(String(20))
-    
+   
     user = relationship("User", back_populates="official_profile")
 
 
@@ -66,5 +67,5 @@ class Resident(Base):
     civil_status = Column(Enum("Single", "Married", "Widowed", "Separated", name="civil_status_enum"))
     email = Column(String(100))
     fcm_token = Column(String(500))
-    
+   
     user = relationship("User", back_populates="resident_profile")

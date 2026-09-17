@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import '../models/announcement.dart';
+import '../services/notification_services.dart';
 
 class _ActionItem {
   final IconData icon;
@@ -12,7 +14,7 @@ class _ActionItem {
 }
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+  const DashboardScreen({super.key});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -34,6 +36,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _loadSession();
     _fetchAnnouncements();
     _pollTruckStatus();
+
+    NotificationService.initialize(context);
   }
 
   @override
@@ -46,10 +50,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final prefs = await SharedPreferences.getInstance();
     final name = prefs.getString('username') ?? 'Resident';
     final pic = prefs.getString('profile_pic');
-    if (mounted) setState(() {
-      _residentName = name;
-      _profilePicUrl = pic;
-    });
+    if (mounted) {
+      setState(() {
+        _residentName = name;
+        _profilePicUrl = pic;
+      });
+    }
   }
 
   void _pollTruckStatus() {
@@ -269,7 +275,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
-          onTap: () => Navigator.pushNamed(context, '/announcement-detail', arguments: a),
+            onTap: () => Navigator.pushNamed(
+            context,
+            '/announcement-detail',
+            arguments: a is Announcement ? a : Announcement.fromJson(Map<String, dynamic>.from(a)),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
@@ -352,7 +362,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Navigator.pop(context);
                   Navigator.pushNamed(context, '/profile');
                 }),
-                const Spacer(),
+                const SizedBox(height: 20),
                 const Divider(),
                 _drawerItem(Icons.logout, 'Logout', () {
                   Navigator.pop(context);

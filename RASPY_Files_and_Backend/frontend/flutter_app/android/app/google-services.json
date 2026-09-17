@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "144742239897",
+    "project_id": "brgy133-system",
+    "storage_bucket": "brgy133-system.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:144742239897:android:cffe938c897e0211427208",
+        "android_client_info": {
+          "package_name": "com.barangay133.flutter_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUqsCwqDMxkdd5uBtScgJOMBx9rd-UaBc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Select, MenuItem, FormControl, InputLabel, Snackbar,
+  TextField, Select, MenuItem, FormControl, InputLabel, Snackbar, Chip,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
+import { CheckCircle, Cancel } from '@mui/icons-material';
 import api from '../api/client';
 
 export default function Residents() {
@@ -21,17 +22,20 @@ export default function Residents() {
   const [confirmAction, setConfirmAction] = useState(null);
   const [snack, setSnack] = useState('');
 
-  const fetch = useCallback(async () => {
+  const fetchResidents = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await api.get('/residents');
       setItems(data);
+    } catch (err) {
+      const d = err.response?.data?.detail;
+      setSnack(Array.isArray(d) ? d.map((e) => e.msg).join(', ') : d || 'Error loading residents');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { fetchResidents(); }, [fetchResidents]);
 
   const filtered = items.filter((r) =>
     !search || `${r.first_name} ${r.middle_name || ''} ${r.last_name}`.toLowerCase().includes(search.toLowerCase())
@@ -48,7 +52,7 @@ export default function Residents() {
       }
       setOpen(false);
       setConfirmTarget(null);
-      fetch();
+      fetchResidents();
     } catch (err) {
       const d = err.response?.data?.detail;
       setSnack(Array.isArray(d) ? d.map((e) => e.msg).join(', ') : d || 'Error saving resident');
@@ -60,10 +64,32 @@ export default function Residents() {
       await api.delete(`/residents/${id}`);
       setSnack('Resident deleted');
       setDeleteTarget(null);
-      fetch();
+      fetchResidents();
     } catch (err) {
       const d2 = err.response?.data?.detail;
       setSnack(Array.isArray(d2) ? d2.map((e) => e.msg).join(', ') : d2 || 'Error deleting resident');
+    }
+  };
+
+  const handleApprove = async (residentId) => {
+    try {
+      await api.put(`/residents/${residentId}/approve`);
+      setSnack('Resident verified and approved successfully.');
+      fetchResidents();
+    } catch (err) {
+      const d = err.response?.data?.detail;
+      setSnack(Array.isArray(d) ? d.map((e) => e.msg).join(', ') : d || 'Error approving resident');
+    }
+  };
+
+  const handleDeny = async (userId) => {
+    try {
+      await api.delete(`/users/${userId}`);
+      setSnack('Resident application denied and account removed.');
+      fetchResidents();
+    } catch (err) {
+      const d = err.response?.data?.detail;
+      setSnack(Array.isArray(d) ? d.map((e) => e.msg).join(', ') : d || 'Error denying resident');
     }
   };
 
@@ -96,11 +122,50 @@ export default function Residents() {
     { field: 'email', headerName: 'Email', width: 180 },
     { field: 'civil_status', headerName: 'Civil Status', width: 110 },
     {
-      field: 'actions', headerName: 'Actions', width: 160,
+      field: 'is_approved',
+      headerName: 'Status',
+      width: 130,
+      renderCell: ({ row }) => (
+        row.is_approved === 0 ? (
+          <Chip label="Pending" color="warning" size="small" variant="outlined" />
+        ) : (
+          <Chip label="Approved" color="success" size="small" variant="outlined" />
+        )
+      ),
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 220,
       renderCell: ({ row }) => (
         <Box sx={{ display: 'flex', gap: 0.5 }}>
-          <Button size="small" onClick={() => openForm(row)}>Edit</Button>
-          <Button size="small" color="error" onClick={() => setDeleteTarget(row)}>Delete</Button>
+          {row.is_approved === 0 ? (
+            <>
+              <Button
+                size="small"
+                color="success"
+                variant="contained"
+                startIcon={<CheckCircle />}
+                onClick={() => handleApprove(row.resident_id)}
+              >
+                Approve
+              </Button>
+              <Button
+                size="small"
+                color="error"
+                variant="outlined"
+                startIcon={<Cancel />}
+                onClick={() => handleDeny(row.user_id)}
+              >
+                Deny
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button size="small" onClick={() => openForm(row)}>Edit</Button>
+              <Button size="small" color="error" onClick={() => setDeleteTarget(row)}>Delete</Button>
+            </>
+          )}
         </Box>
       ),
     },

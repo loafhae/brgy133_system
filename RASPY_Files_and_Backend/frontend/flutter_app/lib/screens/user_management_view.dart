@@ -9,15 +9,14 @@ class UserManagementView extends StatefulWidget {
 }
 
 class _UserManagementViewState extends State<UserManagementView> {
-  String _currentSubView = 'list'; // 'list', 'add', 'edit'
+  String _currentSubView = 'list'; 
   List<dynamic> _users = [];
   bool _isLoading = true;
   String _searchTerm = "";
   String _roleFilter = "";
-  
+ 
   Map<String, dynamic>? _selectedUser;
 
-  // Form Field Controllers
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -234,15 +233,15 @@ class _UserManagementViewState extends State<UserManagementView> {
             : Container(
                 color: Colors.white,
                 child: SizedBox(
-                  width: 800, // ✅ FIXED: Forces the table to expand to its full intended design width layout
+                  width: 800, 
                   child: Table(
                     border: TableBorder.all(color: Colors.black),
                     columnWidths: const {
-                      0: FixedColumnWidth(50),   // '#'
-                      1: FixedColumnWidth(280),  // Username
-                      2: FixedColumnWidth(200),  // Role
-                      3: FixedColumnWidth(150),  // Status
-                      4: FixedColumnWidth(120),  // Action
+                      0: FixedColumnWidth(50),  
+                      1: FixedColumnWidth(280), 
+                      2: FixedColumnWidth(200), 
+                      3: FixedColumnWidth(150), 
+                      4: FixedColumnWidth(120), 
                     },
                   children: [
                     TableRow(
@@ -256,11 +255,9 @@ class _UserManagementViewState extends State<UserManagementView> {
                     ),
                     ...List.generate(filtered.length, (index) {
                       final item = filtered[index];
-                      // Display dynamic backend roles clean
                       String displayedRole = item['roles'] ?? 'Resident';
-                      
-                      // Handle custom status fallback based on active model rules
-                      bool isActiveUser = item['is_active'] ?? true; 
+                     
+                      bool isActiveUser = item['is_active'] ?? true;
                       String statusText = isActiveUser ? "Active" : "Inactive";
 
                       return TableRow(
@@ -269,11 +266,11 @@ class _UserManagementViewState extends State<UserManagementView> {
                           Padding(padding: const EdgeInsets.all(12), child: Text(item['username'] ?? '')),
                           Padding(padding: const EdgeInsets.all(12), child: Text(displayedRole)),
                           Padding(
-                            padding: const EdgeInsets.all(12), 
+                            padding: const EdgeInsets.all(12),
                             child: Text(
-                              statusText, 
+                              statusText,
                               style: TextStyle(
-                                fontWeight: FontWeight.bold, 
+                                fontWeight: FontWeight.bold,
                                 color: isActiveUser ? Colors.green[700] : Colors.red[700]
                               ),
                             ),
@@ -287,8 +284,8 @@ class _UserManagementViewState extends State<UserManagementView> {
                                   setState(() {
                                     _selectedUser = item;
                                     _usernameController.text = item['username'] ?? '';
-                                    _selectedRole = item['roles'] == 'Super Admin' || item['roles'] == 'Barangay Official' || item['roles'] == 'Resident' 
-                                        ? item['roles'] 
+                                    _selectedRole = item['roles'] == 'Super Admin' || item['roles'] == 'Barangay Official' || item['roles'] == 'Resident'
+                                        ? item['roles']
                                         : 'Resident';
                                     _passwordController.clear();
                                     _confirmPasswordController.clear();

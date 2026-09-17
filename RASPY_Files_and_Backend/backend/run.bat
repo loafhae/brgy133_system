@@ -8,7 +8,7 @@ echo   Vision-Trak Backend Server
 echo ====================================
 echo.
 
-set PORT=3000
+set PORT=8000
 
 :: Kill any orphaned python.exe processes
 taskkill /F /IM python.exe >nul 2>&1

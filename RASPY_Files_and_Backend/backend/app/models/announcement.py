@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 class Announcement(Base):
-    __tablename__ = "tbl_announcement" 
+    __tablename__ = "tbl_announcement"
 
     announcement_id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(255), nullable=False)
@@ -15,6 +15,6 @@ class Announcement(Base):
     created_by = Column(Integer, ForeignKey("tbl_users.user_id", ondelete="CASCADE"), nullable=False)
 
     creator = relationship(
-        "User", 
+        "User",
         primaryjoin="Announcement.created_by == User.user_id"
     )

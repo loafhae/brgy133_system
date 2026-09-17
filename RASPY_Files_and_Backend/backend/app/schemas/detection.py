@@ -25,7 +25,7 @@ class DetectionLogResponse(BaseModel):
 
 
 class TruckStatusEvent(BaseModel):
-    event_type: str  # "truck_present" or "truck_departed"
+    event_type: str 
     camera_id: int
     camera_name: str
     confidence: Optional[float] = None
@@ -35,4 +35,4 @@ class TruckStatusEvent(BaseModel):
 class CameraSwitchEvent(BaseModel):
     camera_id: int
     camera_name: str
-    event_type: str  # "scan_start" or "camera_switched"
+    event_type: str

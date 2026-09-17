@@ -1,57 +1,44 @@
-from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
-from app.models.detection import DetectionLog, Notification
-from app.models.settings import SystemSetting
+import firebase_admin
+from firebase_admin import messaging
 
+def send_push_notification(fcm_token: str, title: str, body: str, sound_name: str = "default"):
+    """
+    Sends a high-priority background FCM push notification with a custom sound
+    to a specific device token.
+    """
+    if not fcm_token:
+        print("[WARNING] Cannot send push notification: FCM token is missing.")
+        return False
 
-def get_cooldown_seconds(db: Session) -> int:
-    setting = db.query(SystemSetting).filter(
-        SystemSetting.config_key == "notification_cooldown"
-    ).first()
-    return int(setting.config_value) if setting else 300
+    try:
+        # Construct the message payload configured for background delivery and custom sound
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=body,
+            ),
+            android=messaging.AndroidConfig(
+                priority="high",  # Ensures it wakes up the device immediately
+                notification=messaging.AndroidNotification(
+                    sound=sound_name,  # e.g., "alert_sound" if placed in Android res/raw
+                    default_sound=True if sound_name == "default" else False,
+                    channel_id="high_importance_channel",  # Must match frontend notification channel
+                ),
+            ),
+            apns=messaging.APNSConfig(
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(
+                        sound=f"{sound_name}.caf" if sound_name != "default" else "default",
+                        content_available=True,
+                    ),
+                ),
+            ),
+            token=fcm_token,
+        )
 
-
-def should_send_notification(db: Session) -> bool:
-    cooldown = get_cooldown_seconds(db)
-    last_sent = (
-        db.query(Notification)
-        .filter(Notification.status == "sent")
-        .order_by(Notification.sent_at.desc())
-        .first()
-    )
-    if not last_sent or not last_sent.sent_at:
+        response = messaging.send(message)
+        print(f"[OK] Successfully sent FCM background push notification: {response}")
         return True
-    elapsed = datetime.now() - last_sent.sent_at
-    return elapsed > timedelta(seconds=cooldown)
-
-
-def create_detection_notification(db: Session, detection_log: DetectionLog) -> Notification | None:
-    if not should_send_notification(db):
-        return None
-
-    notification = Notification(
-        log_id=detection_log.log_id,
-        notification_type="detection",
-        title="Garbage Truck Detected",
-        message=f"Garbage truck detected in {detection_log.camera_name} area.",
-        status="pending",
-        target_group="all_residents",
-    )
-    db.add(notification)
-    db.commit()
-    db.refresh(notification)
-    return notification
-
-
-def create_announcement_notification(db: Session, announcement_id: int, title: str) -> Notification:
-    notification = Notification(
-        notification_type="announcement",
-        title="New Announcement",
-        message=f"New announcement: {title}",
-        status="pending",
-        target_group="all_residents",
-    )
-    db.add(notification)
-    db.commit()
-    db.refresh(notification)
-    return notification
+    except Exception as e:
+        print(f"[ERROR] Failed to send FCM push notification: {e}")
+        return False

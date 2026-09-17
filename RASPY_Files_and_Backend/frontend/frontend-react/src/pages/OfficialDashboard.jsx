@@ -106,7 +106,7 @@ export default function OfficialDashboard() {
         {/* LEFT COMPONENT: RESIDENT FEEDBACK LIST FEED */}
         <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.04)', border: '1px solid #f1f3f5' }}>
           <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '700', color: '#212529', borderBottom: '2px solid #f8f9fa', paddingBottom: '12px' }}>
-            📥 Recent Resident Feedbacks (From Database)
+            📥 Recent Resident Feedbacks
           </h3>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', maxHeight: '420px', paddingRight: '4px' }}>

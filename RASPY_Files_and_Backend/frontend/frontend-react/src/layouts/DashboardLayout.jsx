@@ -16,12 +16,13 @@ const DRAWER_WIDTH = 260;
 
 const navItems = [
   { label: 'Dashboard', path: '/', icon: <Dashboard />, roles: ['super_admin', 'official'] },
-  { label: 'Users', path: '/users', icon: <People />, roles: ['super_admin'] },
-  { label: 'Announcements', path: '/announcements', icon: <Campaign />, roles: ['super_admin', 'official'] },
+  { label: 'Users Management', path: '/users', icon: <People />, roles: ['super_admin'] },
+  { label: 'Resident Record', path: '/residents', icon: <People />, roles: ['super_admin'] },
+  { label: 'Announcements', path: '/announcements', icon: <Campaign />, roles: ['official'] },
   { label: 'Feedback', path: '/feedback', icon: <Feedback />, roles: ['super_admin', 'official'] },
-  { label: 'Activity Logs', path: '/activity', icon: <History />, roles: ['super_admin', 'official'] },
-  { label: 'Detection Logs', path: '/detection-logs', icon: <Videocam />, roles: ['super_admin', 'official'] },
-  { label: 'Reports', path: '/reports', icon: <Assessment />, roles: ['super_admin', 'official'] },
+  { label: 'Resident Activity Logs', path: '/activity', icon: <History />, roles: ['official'] },
+  { label: 'Detection Logs', path: '/detection-logs', icon: <Videocam />, roles: ['official'] },
+  { label: 'Reports', path: '/reports', icon: <Assessment />, roles: ['official'] },
   { label: 'Settings', path: '/settings', icon: <Settings />, roles: ['super_admin'] },
 ];
 
@@ -206,7 +207,7 @@ export default function DashboardLayout() {
           backgroundPosition: 'center',
         }}
       >
-        <Box sx={{ bgcolor: 'rgba(255,255,255,0.92)', borderRadius: 2, p: 3, minHeight: '80vh' }}>
+        <Box sx={{ bgcolor: 'rgba(255,255,255,0.92)', borderRadius: 2, p: 3, minHeight: '80vh', width: '100%', boxSizing: 'border-box' }}>
           <Outlet />
         </Box>
       </Box>
