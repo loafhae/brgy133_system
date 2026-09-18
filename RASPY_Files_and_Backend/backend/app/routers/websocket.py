@@ -174,13 +174,32 @@ def process_detection_event(payload):
                     log_id=log.log_id,
                     notification_type="detection",
                     title="Garbage Truck Detected",
-                    message="The garbage truck is now in your area. Please prepare your waste for collection.",
+                    message=f"The garbage truck has been detected at {camera_name}. Please prepare your waste for collection.",
                     status="sent",
                     sent_at=datetime.now(),
                     target_group="residents",
                 )
                 db.add(notif)
                 _last_notification_time = time.time()
+
+                try:
+                    from firebase_admin import messaging
+                    from app.models.user import Resident
+                    residents_with_tokens = db.query(Resident).filter(Resident.fcm_token != None).all()
+                    tokens = [r.fcm_token for r in residents_with_tokens if r.fcm_token]
+                    if tokens:
+                        fcm_msg = messaging.MulticastMessage(
+                            notification=messaging.Notification(
+                                title="Garbage Truck Detected",
+                                body=f"Garbage truck is now in {camera_name}. Please bring out your waste!",
+                            ),
+                            tokens=tokens,
+                        )
+                        messaging.send_each_for_multicast(fcm_msg)
+                        print(f"[FCM] Sent truck alert to {len(tokens)} registered mobile devices")
+                except Exception as fcm_err:
+                    print(f"[FCM] Detection push skipped: {fcm_err}")
+
 
             audit = AuditLog(
                 user_id=None,

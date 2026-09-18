@@ -44,9 +44,16 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const hasRole = (role) => {
+  const hasRole = (...requiredRoles) => {
     if (!user) return false;
-    return user.role === role;
+    const flatRequired = requiredRoles.flat();
+    const userRole = user.role || user.roles || '';
+    const userRolesList = Array.isArray(userRole)
+      ? userRole.map((r) => String(r).trim().toLowerCase())
+      : typeof userRole === 'string'
+      ? userRole.split(',').map((r) => r.trim().toLowerCase())
+      : [String(userRole).toLowerCase()];
+    return flatRequired.some((req) => userRolesList.includes(String(req).toLowerCase()));
   };
 
   const updateProfilePic = (picUrl) => {

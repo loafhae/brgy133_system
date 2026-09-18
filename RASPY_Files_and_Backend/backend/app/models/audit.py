@@ -13,7 +13,7 @@ class AuditLog(Base):
     description = Column(Text)
     ip_address = Column(String(45))
     timestamp = Column(DateTime, server_default=func.now())
-    user_id = Column(Integer, ForeignKey("tbl_users.user_id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("tbl_users.user_id", ondelete="CASCADE"), nullable=True)
 
     user = relationship(
         "User",

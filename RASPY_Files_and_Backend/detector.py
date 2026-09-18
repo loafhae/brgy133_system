@@ -1,3 +1,4 @@
+# Vision-Trak Multi-Camera AI Garbage Truck Detector
 import os
 import json
 try:
@@ -38,10 +39,22 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 # ==========================================
 # WEBSOCKET CONFIGURATION
 # ==========================================
-# SERVER_URL = change this to your PC's IP address
-# Find it by running: ipconfig  (look for IPv4)
-# ==========================================
-SERVER_URL = "wss://oriental-winston-installation-fed.trycloudflare.com/ws"
+def _get_server_url():
+    env_url = os.environ.get("DETECTOR_SERVER_URL")
+    if env_url:
+        return env_url
+    tunnel_file = os.path.join(script_dir, "tunnel_be_url.txt")
+    if os.path.exists(tunnel_file):
+        try:
+            with open(tunnel_file, "r") as f:
+                url = f.read().strip()
+                if url.startswith("http"):
+                    return url.replace("https://", "wss://").replace("http://", "ws://") + "/ws"
+        except Exception:
+            pass
+    return "ws://127.0.0.1:8000/ws"
+
+SERVER_URL = _get_server_url()
 SNAPSHOT_DIR = os.path.join(script_dir, "snapshots")
 
 _ws = None
@@ -308,74 +321,113 @@ def notify_camera_switched(cam_id, cam_name):
 # ==========================================
 class ThreadedCamera:
     """
-    [Inference] [Unverified] Spins up a dedicated background thread to continuously pull frames
-    from a video source (local file or IP RTSP stream).
-    Optimized with adjustable frame-skipping (FRAME_SKIP) inside the decoding thread to reduce CPU load.
+    Spins up a dedicated background thread to continuously pull frames
+    from a video source (local file, webcam index, or IP RTSP stream).
+    Optimized with adjustable frame-skipping (FRAME_SKIP) inside the decoding thread.
     """
     def __init__(self, name, source, frame_skip=3):
         self.name = name
-        self.source = source
+        
+        # If source is digit or int (e.g. 0 or "0"), parse as int for OpenCV webcam device
+        if isinstance(source, int):
+            self.source = source
+        elif isinstance(source, str) and source.strip().isdigit():
+            self.source = int(source.strip())
+        elif isinstance(source, str) and not (source.lower().startswith("rtsp") or source.lower().startswith("http") or os.path.isabs(source)):
+            candidate = os.path.join(script_dir, source)
+            self.source = candidate if os.path.exists(candidate) else source
+        else:
+            self.source = source
+
         self.frame_skip = frame_skip
-        self.cap = cv2.VideoCapture(source)
+        self.is_stream = isinstance(self.source, str) and ("rtsp" in str(self.source).lower() or "http" in str(self.source).lower())
+        self.is_cam_device = isinstance(self.source, int)
+        
+        try:
+            self.cap = cv2.VideoCapture(self.source)
+        except Exception:
+            self.cap = None
+
         self.ret = False
         self.frame = None
         self.frame_id = 0
         self.running = True
         self.active = False  # Controlled dynamically by the main routing loop
         
-        # [Inference] [Unverified] Determine if the source is an IP stream (RTSP/HTTP) or a local file
-        self.is_stream = "rtsp" in str(source).lower() or "http" in str(source).lower()
-        
-        # [Inference] Extract video frame rate for pacing (default to 30 FPS if unavailable)
-        fps = self.cap.get(cv2.CAP_PROP_FPS)
+        fps = self.cap.get(cv2.CAP_PROP_FPS) if (self.cap and self.cap.isOpened()) else 30
         self.frame_delay = (1.0 / fps) * self.frame_skip if (fps and fps > 0) else 0.033 * self.frame_skip
         
-        self.thread = threading.Thread(target=self.update, args=())
-        self.thread.daemon = True
+        self.thread = threading.Thread(target=self.update, args=(), daemon=True)
         self.thread.start()
 
+    def _generate_placeholder(self):
+        img = np.zeros((720, 1280, 3), dtype=np.uint8)
+        img[:] = (35, 30, 25)
+        cv2.rectangle(img, (20, 20), (1260, 700), (60, 50, 40), 2)
+        cv2.putText(img, f"CAMERA: {self.name}", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 255), 2)
+        cv2.putText(img, f"Source: {self.source} (Waiting for stream / video file)", (50, 160), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (180, 180, 180), 2)
+        cv2.putText(img, f"Status: Active Scanning | Time: {time.strftime('%H:%M:%S')}", (50, 220), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 220, 0), 2)
+        cv2.putText(img, "Tip: Use webcam with source=0 or place video files (.mp4) in folder", (50, 280), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (120, 220, 255), 2)
+        return img
+
     def update(self):
+        last_placeholder_time = 0
         while self.running:
-            if self.cap.isOpened():
+            if self.cap is not None and self.cap.isOpened():
                 if self.active:
-                    # [Inference] [Unverified] Apply frame-skipping inside the background thread.
-                    # Bypassing raw frame decoding on skipped frames reduces CPU decompression load.
                     if self.frame_skip > 1:
                         for _ in range(self.frame_skip - 1):
                             self.cap.grab()
                             
                     ret, frame = self.cap.read()
-                    if ret:
+                    if ret and frame is not None:
                         self.ret = ret
                         self.frame = frame
                         self.frame_id += 1
-                        if not self.is_stream:
-                            # Pace reading to match the actual video frame rate
+                        if not self.is_stream and not self.is_cam_device:
                             time.sleep(self.frame_delay)
+                        elif self.is_cam_device:
+                            time.sleep(0.01)
                     else:
-                        if not self.is_stream:
-                            # Auto-rewind back to start for local video file looping
+                        if not self.is_stream and not self.is_cam_device:
                             self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                             time.sleep(0.01)
                         else:
-                            # [Inference] [Unverified] Handle network stream drops by triggering reconnection
                             self.ret = False
                             time.sleep(2.0)
                             self.reconnect()
                 else:
-                    # When inactive, keep the decoder idle to avoid FFmpeg
-                    # threading assertion (fctx->async_lock) across multiple cameras.
                     self.ret = False
                     self.frame = None
                     time.sleep(0.1)
             else:
-                time.sleep(1.0)
-                self.reconnect()
+                if self.active:
+                    now = time.time()
+                    if now - last_placeholder_time >= 0.1:
+                        self.frame = self._generate_placeholder()
+                        self.ret = True
+                        self.frame_id += 1
+                        last_placeholder_time = now
+                    time.sleep(0.05)
+                else:
+                    self.ret = False
+                    self.frame = None
+                    time.sleep(0.2)
+                
+                # Retry reconnecting occasionally
+                if int(time.time()) % 10 == 0:
+                    self.reconnect()
 
     def reconnect(self):
         if self.cap is not None:
-            self.cap.release()
-        self.cap = cv2.VideoCapture(self.source)
+            try:
+                self.cap.release()
+            except Exception:
+                pass
+        try:
+            self.cap = cv2.VideoCapture(self.source)
+        except Exception:
+            self.cap = None
         time.sleep(1.0)
 
     def get_frame(self):
@@ -384,7 +436,10 @@ class ThreadedCamera:
     def stop(self):
         self.running = False
         if self.cap is not None:
-            self.cap.release()
+            try:
+                self.cap.release()
+            except Exception:
+                pass
 
 # ==========================================
 # 2. SETUP: NCNN MODEL & PATHS
@@ -492,8 +547,8 @@ class BoundingBoxTracker:
 # ==========================================
 # 4. CAMERA CONFIGURATIONS & SYSTEM STATE
 # ==========================================
-# Class 7 corresponds to "truck" in the default YOLOv8 COCO dataset.
-TARGET_CLASS_ID = 7  
+# Class 0 corresponds to "garbage_truck" in the trained custom YOLOv8 model.
+TARGET_CLASS_ID = 0  
 
 # [Inference] [Unverified] Testing with local video file sources.
 # Here we map all three camera channels to the same local "04.mp4" file, 
@@ -560,9 +615,10 @@ camera_configs = [
 ]
 
 # --- DEBOUNCE STATE MACHINE THRESHOLDS ---
-# Calibrated for ~10 FPS per camera with 1s scan dwell across 9 cameras
-REQUIRED_PRESENT = 100   # ~10 seconds to confirm truck in zone
-REQUIRED_MISSING = 60   # ~6 seconds to confirm truck left
+# Calibrated for responsive detection (~1.2s confirm / ~1.5s depart)
+REQUIRED_PRESENT = 12   # Frames to confirm truck in zone
+REQUIRED_MISSING = 15   # Frames to confirm truck left
+
 
 # --- TIMING CONFIGURATIONS ---
 SCAN_DURATION = 1.0  # Seconds per camera before switching (9 cameras = 9s full cycle)
@@ -588,9 +644,10 @@ NMS_THRESHOLD = 0.45
 DISPLAY_W = 1280
 DISPLAY_H = 720
 
-# Initialize Shapely geometries and reader threads with frame skip configured
+# Initialize reader threads with frame skip configured
 for cam in camera_configs:
-    cam["reader"] = ThreadedCamera(cam["name"], cam["source"], frame_skip=FRAME_SKIP)
+    if cam.get("reader") is None:
+        cam["reader"] = ThreadedCamera(cam["name"], cam["source"], frame_skip=FRAME_SKIP)
 
 # ==========================================
 # 5. HELPER FUNCTIONS: PRE-PROCESSING & POST-PROCESSING
@@ -835,16 +892,20 @@ class MJPEGStreamer:
                 self.send_header('Pragma', 'no-cache')
                 self.end_headers()
                 try:
-                    while True:
-                        data = ref._wait_frame()
-                        if data is None:
-                            break
-                        self.wfile.write(b'--frame\r\n')
-                        self.wfile.write(b'Content-Type: image/jpeg\r\n')
-                        self.wfile.write(f'Content-Length: {len(data)}\r\n'.encode())
-                        self.wfile.write(b'\r\n')
-                        self.wfile.write(data)
-                        self.wfile.write(b'\r\n')
+                    last_sent = None
+                    while not ref._stopped:
+                        data = None
+                        with ref.lock:
+                            data = ref.frame
+                        if data is not None and data != last_sent:
+                            last_sent = data
+                            self.wfile.write(b'--frame\r\n')
+                            self.wfile.write(b'Content-Type: image/jpeg\r\n')
+                            self.wfile.write(f'Content-Length: {len(data)}\r\n'.encode())
+                            self.wfile.write(b'\r\n')
+                            self.wfile.write(data)
+                            self.wfile.write(b'\r\n')
+                        time.sleep(0.033)
                 except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
                     pass
             def _serve_status(self):
@@ -946,6 +1007,47 @@ class MJPEGStreamer:
             self.server.shutdown()
 
 def _main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Multi-camera Garbage Truck Detector")
+    parser.add_argument("--backend", type=str, default=None, help="Central Backend URL (e.g. https://xxx.trycloudflare.com or http://ip:8000)")
+    parser.add_argument("--source", type=str, default=None, help="Global camera source (e.g. 0 for webcam, or video file / RTSP URL)")
+    parser.add_argument("--webcam", action="store_true", help="Use local webcam (device 0) for all cameras")
+    parser.add_argument("--cam1", type=str, default=None, help="Camera 1 source override")
+    parser.add_argument("--cam2", type=str, default=None, help="Camera 2 source override")
+    parser.add_argument("--cam3", type=str, default=None, help="Camera 3 source override")
+    args, _ = parser.parse_known_args()
+
+    global SERVER_URL
+    if args.backend:
+        url = args.backend.strip()
+        if url.startswith("http"):
+            SERVER_URL = url.replace("https://", "wss://").replace("http://", "ws://").rstrip("/") + "/ws"
+        else:
+            SERVER_URL = url
+        print(f"[CONFIG] Backend Event URL set to: {SERVER_URL}")
+
+
+    for i, cam in enumerate(camera_configs):
+        override = None
+        if args.webcam:
+            override = 0
+        elif args.source is not None:
+            override = args.source
+        elif i == 0 and args.cam1:
+            override = args.cam1
+        elif i == 1 and args.cam2:
+            override = args.cam2
+        elif i == 2 and args.cam3:
+            override = args.cam3
+
+        if override is not None:
+            cam["source"] = override
+            if cam.get("reader") is not None:
+                cam["reader"].stop()
+            cam["reader"] = ThreadedCamera(cam["name"], cam["source"], frame_skip=FRAME_SKIP)
+        elif cam.get("reader") is None:
+            cam["reader"] = ThreadedCamera(cam["name"], cam["source"], frame_skip=FRAME_SKIP)
+
     active_idx = 0
     focused_idx = None
     shared_state = {"active_idx": active_idx, "focused_idx": focused_idx, "fps": 0.0}
@@ -1128,7 +1230,8 @@ def _main():
                 else:
                     if cam["consecutive_missing"] < REQUIRED_MISSING:
                         cam["consecutive_missing"] += 1
-                    cam["consecutive_present"] = 0
+                    cam["consecutive_present"] = max(0, cam["consecutive_present"] - 1)
+
                     
                 if not cam["truck_in_zone"]:
                     if cam["consecutive_present"] >= REQUIRED_PRESENT:

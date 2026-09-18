@@ -1,10 +1,14 @@
+# Authentication & User Management Router
+import os, shutil, uuid
 import random
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 from app.database import get_db
-from app.models.user import User, Resident
+from app.models.user import User, Admin, Official, Resident
+from app.paths import PROFILE_PIC_DIR, UPLOAD_DIR
 from app.services.auth_service import hash_password, verify_password, create_access_token, get_current_user
 from app.services.email_service import send_otp_email
 
@@ -13,6 +17,14 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+class ProfileUpdateRequest(BaseModel):
+    username: Optional[str] = None
+    first_name: Optional[str] = None
+    middle_name: Optional[str] = None
+    last_name: Optional[str] = None
+    contact: Optional[str] = None
+    email: Optional[EmailStr] = None
 
 class RegisterRequest(BaseModel):
     username: str
@@ -65,14 +77,15 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
         "must_change_password": getattr(user, "must_change_password", False)
     }
 
-@router.get("/me")
-def get_current_user_profile(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def _build_user_response(current_user: User):
     profile_data = None
-    if getattr(current_user, "resident_profile", None):
+    sub = getattr(current_user, "admin_profile", None) or getattr(current_user, "official_profile", None) or getattr(current_user, "resident_profile", None)
+    if sub:
         profile_data = {
-            "first_name": current_user.resident_profile.first_name,
-            "last_name": current_user.resident_profile.last_name,
-            "contact": current_user.resident_profile.contact,
+            "first_name": getattr(sub, "first_name", "") or "",
+            "middle_name": getattr(sub, "middle_name", "") or "",
+            "last_name": getattr(sub, "last_name", "") or "",
+            "contact": getattr(sub, "contact", "") or "",
         }
 
     return {
@@ -84,6 +97,118 @@ def get_current_user_profile(db: Session = Depends(get_db), current_user: User =
         "must_change_password": getattr(current_user, "must_change_password", False),
         "profile": profile_data
     }
+
+@router.get("/me")
+def get_current_user_profile(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return _build_user_response(current_user)
+
+@router.post("/upload-profile-pic")
+def upload_profile_pic(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not file or not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided.")
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in [".jpg", ".jpeg", ".png", ".webp", ".gif"]:
+        raise HTTPException(status_code=400, detail="Invalid image format. Supported: JPG, PNG, WEBP, GIF.")
+
+    os.makedirs(PROFILE_PIC_DIR, exist_ok=True)
+    
+    # Remove old profile picture if exists
+    if current_user.profile_pic:
+        old_file = os.path.basename(current_user.profile_pic)
+        old_path = os.path.join(PROFILE_PIC_DIR, old_file)
+        if os.path.exists(old_path):
+            try:
+                os.remove(old_path)
+            except Exception:
+                pass
+
+    fname = f"user_{current_user.user_id}_{uuid.uuid4().hex[:8]}{ext}"
+    fpath = os.path.join(PROFILE_PIC_DIR, fname)
+    
+    with open(fpath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    pic_url = f"/uploads/profile_pics/{fname}"
+    current_user.profile_pic = pic_url
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "profile_pic": pic_url,
+        "message": "Profile picture updated successfully.",
+        **_build_user_response(current_user)
+    }
+
+@router.put("/profile")
+def update_profile(
+    body: ProfileUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if body.username and body.username != current_user.username:
+        existing = db.query(User).filter(User.username == body.username, User.user_id != current_user.user_id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Username already taken.")
+        current_user.username = body.username
+
+    if body.email and body.email != current_user.email:
+        existing_email = db.query(User).filter(User.email == body.email, User.user_id != current_user.user_id).first()
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Email already registered to another account.")
+        current_user.email = body.email
+
+    # Update associated role profile
+    role = str(current_user.roles).lower()
+    if "super_admin" in role or "admin" in role:
+        profile = current_user.admin_profile
+        if not profile:
+            profile = Admin(user_id=current_user.user_id, first_name=body.first_name or "", last_name=body.last_name or "")
+            db.add(profile)
+        if body.first_name is not None:
+            profile.first_name = body.first_name
+        if body.middle_name is not None:
+            profile.middle_name = body.middle_name
+        if body.last_name is not None:
+            profile.last_name = body.last_name
+        if body.contact is not None:
+            profile.contact = body.contact
+
+    elif "official" in role:
+        profile = current_user.official_profile
+        if not profile:
+            profile = Official(user_id=current_user.user_id, first_name=body.first_name or "", last_name=body.last_name or "")
+            db.add(profile)
+        if body.first_name is not None:
+            profile.first_name = body.first_name
+        if body.middle_name is not None:
+            profile.middle_name = body.middle_name
+        if body.last_name is not None:
+            profile.last_name = body.last_name
+        if body.contact is not None:
+            profile.contact = body.contact
+
+    else:
+        profile = current_user.resident_profile
+        if not profile:
+            profile = Resident(user_id=current_user.user_id, first_name=body.first_name or "", last_name=body.last_name or "")
+            db.add(profile)
+        if body.first_name is not None:
+            profile.first_name = body.first_name
+        if body.middle_name is not None:
+            profile.middle_name = body.middle_name
+        if body.last_name is not None:
+            profile.last_name = body.last_name
+        if body.contact is not None:
+            profile.contact = body.contact
+
+    db.commit()
+    db.refresh(current_user)
+    return _build_user_response(current_user)
 
 @router.post("/register")
 def register(body: RegisterRequest, db: Session = Depends(get_db)):

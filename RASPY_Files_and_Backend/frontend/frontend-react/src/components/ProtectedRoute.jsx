@@ -20,7 +20,7 @@ export default function ProtectedRoute({ roles }) {
     return <Navigate to="/change-password" replace />;
   }
 
-  if (roles && !hasRole(...roles)) return <Navigate to="/" replace />;
+  if (roles && !hasRole(roles)) return <Navigate to="/" replace />;
 
   return <Outlet />;
 }

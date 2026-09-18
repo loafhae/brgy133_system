@@ -1,0 +1,9 @@
+{
+  "extraPaths": [
+    "C:\\Users\\Jebi\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\site-packages",
+    "./",
+    "./backend"
+  ],
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none"
+}

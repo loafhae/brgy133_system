@@ -19,8 +19,8 @@ import Settings from './pages/Settings';
 
 // Helper component to route "/" dynamically based on user role
 function DynamicDashboard() {
-  const { user } = useAuth();
-  if (user?.role === 'official') {
+  const { hasRole } = useAuth();
+  if (hasRole('official')) {
     return <OfficialDashboard />;
   }
   return <Dashboard />;
