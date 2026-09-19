@@ -1,6 +1,8 @@
+from datetime import datetime
+from typing import Optional
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Date, Enum
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.database import Base
 
 class User(Base):
@@ -15,8 +17,9 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_approved = Column(Integer, default=1)  # 1 for admins/officials, 0 for pending residents
     reset_otp = Column(String(10), nullable=True) # For password recovery code
-    otp_expiry = Column(DateTime, nullable=True) # For code expiration
+    otp_expiry: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True) # For code expiration
     must_change_password = Column(Boolean, default=False)
+    last_seen: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

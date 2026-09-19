@@ -55,9 +55,10 @@ export default function Register() {
     <Box sx={{
       display: 'flex', justifyContent: 'center', alignItems: 'center',
       minHeight: '100vh',
-      backgroundImage: 'url(/barangay.jpg)',
+      backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.45)), url(/barangay.jpg)',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
       p: 2
     }}>
       <Card sx={{

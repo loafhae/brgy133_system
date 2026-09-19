@@ -37,6 +37,7 @@ class UserResponse(BaseModel):
     roles: str
     is_active: Optional[bool] = True
     created_at: Optional[datetime] = None
+    last_seen: Optional[datetime] = None
     profile_pic: Optional[str] = None
     first_name: Optional[str] = None
     middle_name: Optional[str] = None

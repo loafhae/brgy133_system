@@ -7,6 +7,7 @@ import 'providers/auth_provider.dart';
 import 'providers/announcement_provider.dart';
 import 'providers/feedback_provider.dart';
 import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
 import 'screens/change_password_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/announcements_screen.dart';
@@ -73,6 +74,7 @@ class MyApp extends StatelessWidget {
         initialRoute: '/login',
         routes: {
           '/login': (context) => const LoginScreen(),
+          '/register': (context) => const RegisterScreen(),
           '/change-password': (context) => const ChangePasswordScreen(),
           '/dashboard': (context) => const DashboardScreen(),
           '/announcements': (context) => const AnnouncementsScreen(),

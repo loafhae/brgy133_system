@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, TextField, Button, Typography, Alert, Card } from '@mui/material';
+import { Box, TextField, Button, Typography, Alert, Card, IconButton, InputAdornment } from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import api from '../api/client';
 
 export default function PasswordRecovery() {
@@ -10,6 +11,8 @@ export default function PasswordRecovery() {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -63,9 +66,10 @@ export default function PasswordRecovery() {
     <Box sx={{
       display: 'flex', justifyContent: 'center', alignItems: 'center',
       minHeight: '100vh',
-      backgroundImage: 'url(/barangay.jpg)',
+      backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.45)), url(/barangay.jpg)',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
       p: 2
     }}>
       <Card sx={{
@@ -116,10 +120,46 @@ export default function PasswordRecovery() {
         {screen === 'reset' && (
           <form onSubmit={handleResetPassword}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>Reset Password</Typography>
-            <TextField label="New Password" type="password" fullWidth required value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)} sx={{ mb: 2 }} />
-            <TextField label="Confirm New Password" type="password" fullWidth required value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)} sx={{ mb: 3 }} />
+            <TextField
+              label="New Password"
+              type={showNew ? 'text' : 'password'}
+              fullWidth
+              required
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              sx={{ mb: 2 }}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => setShowNew(!showNew)} edge="end">
+                        {showNew ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+            <TextField
+              label="Confirm New Password"
+              type={showConfirm ? 'text' : 'password'}
+              fullWidth
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              sx={{ mb: 3 }}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => setShowConfirm(!showConfirm)} edge="end">
+                        {showConfirm ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
             <Button type="submit" variant="contained" fullWidth size="large" disabled={loading} sx={{ py: 1.5, fontWeight: 700 }}>
               {loading ? 'Updating...' : 'UPDATE PASSWORD'}
             </Button>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Card, Typography, TextField, Button, Alert } from '@mui/material';
+import { Box, Card, Typography, TextField, Button, Alert, IconButton, InputAdornment } from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -10,6 +11,9 @@ export default function ChangePassword() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -54,30 +58,63 @@ export default function ChangePassword() {
         <form onSubmit={handleSubmit}>
           <TextField
             label="Current Password"
-            type="password"
+            type={showCurrent ? 'text' : 'password'}
             fullWidth
             required
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             sx={{ mb: 2 }}
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setShowCurrent(!showCurrent)} edge="end">
+                      {showCurrent ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
           <TextField
             label="New Password"
-            type="password"
+            type={showNew ? 'text' : 'password'}
             fullWidth
             required
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             sx={{ mb: 2 }}
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setShowNew(!showNew)} edge="end">
+                      {showNew ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
           <TextField
             label="Confirm New Password"
-            type="password"
+            type={showConfirm ? 'text' : 'password'}
             fullWidth
             required
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             sx={{ mb: 3 }}
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setShowConfirm(!showConfirm)} edge="end">
+                      {showConfirm ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
           <Button type="submit" variant="contained" fullWidth size="large" disabled={loading}>
             {loading ? 'Changing...' : 'Change Password'}

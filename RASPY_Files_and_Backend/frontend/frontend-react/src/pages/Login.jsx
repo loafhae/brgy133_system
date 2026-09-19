@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, TextField, Button, Typography, Alert, Link, Card, CardActionArea } from '@mui/material';
-import { AdminPanelSettings, Badge } from '@mui/icons-material';
+import { Box, TextField, Button, Typography, Alert, Link, Card, CardActionArea, IconButton, InputAdornment } from '@mui/material';
+import { AdminPanelSettings, Badge, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
 const roles = [
@@ -15,6 +15,7 @@ export default function Login() {
   const [selectedRole, setSelectedRole] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -43,9 +44,10 @@ export default function Login() {
     <Box sx={{
       display: 'flex', justifyContent: 'center', alignItems: 'center',
       minHeight: '100vh',
-      backgroundImage: 'url(/barangay.jpg)',
+      backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.45)), url(/barangay.jpg)',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
     }}>
       <Box sx={{
         width: 440, p: 4,
@@ -94,18 +96,38 @@ export default function Login() {
             <form onSubmit={handleSubmit}>
               <TextField label="Username" fullWidth required value={username}
                 onChange={(e) => setUsername(e.target.value)} sx={{ mb: 2 }} />
-              <TextField label="Password" type="password" fullWidth required value={password}
-                onChange={(e) => setPassword(e.target.value)} sx={{ mb: 3 }} />
+              <TextField
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                fullWidth
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                sx={{ mb: 3 }}
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={() => setShowPassword((show) => !show)}
+                          edge="end"
+                          size="small"
+                        >
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
               <Button type="submit" variant="contained" fullWidth size="large" disabled={loading}
                 sx={{ py: 1.5, fontWeight: 700 }}>
                 {loading ? 'Signing in...' : 'LOGIN'}
               </Button>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
                 <Link component="button" variant="body2" type="button" onClick={() => navigate('/forgot-password')}>
                   Forgot Password?
-                </Link>
-                <Link component="button" variant="body2" type="button" onClick={() => navigate('/register')}>
-                  Register Account
                 </Link>
               </Box>
             </form>

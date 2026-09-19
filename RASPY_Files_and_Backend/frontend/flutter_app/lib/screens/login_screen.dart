@@ -13,6 +13,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
   bool _isLoading = false;
   String _errorMessage = "";
 
@@ -76,6 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
           image: DecorationImage(
             image: AssetImage('assets/barangay.jpg'),
             fit: BoxFit.cover,
+            filterQuality: FilterQuality.high,
           ),
         ),
         child: Center(
@@ -124,11 +126,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 15),
                   TextFormField(
                     controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
                       labelText: 'Password',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.lock),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          color: Colors.grey[600],
+                        ),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      ),
                     ),
                     validator: (v) => v!.isEmpty ? 'Please enter password' : null,
                   ),
@@ -143,22 +152,37 @@ class _LoginScreenState extends State<LoginScreen> {
                           : const Text('LOGIN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  GestureDetector(
-                    onTap: () => showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Forgot Password'),
-                        content: const Text('Please contact the barangay office to reset your password.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('OK'),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      GestureDetector(
+                        onTap: () => showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Forgot Password'),
+                            content: const Text('Please contact the barangay office to reset your password.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('OK'),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
+                        child: const Text(
+                          'Forgot Password?',
+                          style: TextStyle(color: Color(0xFFc62828), fontWeight: FontWeight.w600),
+                        ),
                       ),
-                    ),
-                    child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFFc62828), fontWeight: FontWeight.w600)),
+                      GestureDetector(
+                        onTap: () => Navigator.pushNamed(context, '/register'),
+                        child: const Text(
+                          'Register Account',
+                          style: TextStyle(color: Color(0xFFc62828), fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

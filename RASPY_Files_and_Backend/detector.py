@@ -1,6 +1,9 @@
+from __future__ import annotations
+# pyright: reportAttributeAccessIssue=false, reportOptionalMemberAccess=false, reportOptionalCall=false
 # Vision-Trak Multi-Camera AI Garbage Truck Detector
 import os
 import json
+from typing import Any, Dict, List, Optional, Tuple, Union
 try:
     import cv2
 except Exception:
@@ -22,7 +25,7 @@ import socket
 import socketserver
 from http import server
 try:
-    from shapely.geometry import Point, Polygon
+    from shapely.geometry import Point, Polygon  # type: ignore
 except Exception:
     Point = None
     Polygon = None
@@ -70,6 +73,8 @@ if cv2 is None or np is None:
         "Missing required Python packages: 'opencv-python' and/or 'numpy'.\n"
         "Install with: pip install opencv-python numpy"
     )
+assert cv2 is not None
+assert np is not None
 
 # Provide a lightweight fallback for shapely.geometry if not available
 def _point_in_polygon(x, y, poly_points):
@@ -114,6 +119,9 @@ if Point is None or Polygon is None:
     Point = lambda x, y: PointTuple((x, y))
     Polygon = FallbackPolygon
 
+assert Point is not None
+assert Polygon is not None
+
 # WebSocket client may be optional; if not installed we will only use HTTP fallback
 WS_AVAILABLE = websocket is not None
 
@@ -140,36 +148,21 @@ def _get_ws():
 
         if _ws is None:
             # Build list of candidate WebSocket URLs to try
-            candidates = [SERVER_URL]
-            
-            # If the primary is not localhost/127.0.0.1
-            is_remote = "127.0.0.1" not in SERVER_URL and "localhost" not in SERVER_URL
-            
-            # Add primary IP with port 8000 if primary is on port 3000
-            if ":3000" in SERVER_URL:
-                candidates.append(SERVER_URL.replace(":3000", ":8000"))
-            
-            # Add localhost candidates
-            if is_remote:
-                candidates.append("ws://127.0.0.1:3000/ws")
+            candidates = []
+            if SERVER_URL:
+                candidates.append(SERVER_URL)
+            if "ws://127.0.0.1:8000/ws" not in candidates:
                 candidates.append("ws://127.0.0.1:8000/ws")
-            else:
-                # If primary is localhost but on port 3000, add port 8000 candidate
-                if ":3000" in SERVER_URL:
-                    candidates.append("ws://127.0.0.1:8000/ws")
-                elif ":8000" in SERVER_URL:
-                    candidates.append("ws://127.0.0.1:3000/ws")
 
             for url in candidates:
-                        if not WS_AVAILABLE:
-                            # websocket-client not installed; skip websocket connect
-                            continue
-                        try:
-                            _ws = websocket.create_connection(url, timeout=5.0)
-                            print(f"[WS] Connected successfully to: {url}")
-                            return _ws
-                        except Exception:
-                            pass
+                if not WS_AVAILABLE or websocket is None:
+                    continue
+                try:
+                    _ws = websocket.create_connection(url, timeout=2.0)
+                    print(f"[WS] Connected successfully to: {url}")
+                    return _ws
+                except Exception:
+                    pass
             
             rate_limit_log(
                 "ws_connect_failed",
@@ -184,19 +177,8 @@ def http_send(payload):
     # Convert ws:// or wss:// to http:// or https:// and /ws to /api/detection/fire
     http_url = SERVER_URL.replace("wss://", "https://").replace("ws://", "http://").replace("/ws", "/api/detection/fire")
     candidates = [http_url]
-    
-    if ":3000" in http_url:
-        candidates.append(http_url.replace(":3000", ":8000"))
-        
-    is_remote = "127.0.0.1" not in http_url and "localhost" not in http_url
-    if is_remote:
-        candidates.append("http://127.0.0.1:3000/api/detection/fire")
+    if "http://127.0.0.1:8000/api/detection/fire" not in candidates:
         candidates.append("http://127.0.0.1:8000/api/detection/fire")
-    else:
-        if ":3000" in http_url:
-            candidates.append("http://127.0.0.1:8000/api/detection/fire")
-        elif ":8000" in http_url:
-            candidates.append("http://127.0.0.1:3000/api/detection/fire")
 
     for url in candidates:
         try:
@@ -206,12 +188,13 @@ def http_send(payload):
                 headers={'Content-Type': 'application/json'},
                 method='POST'
             )
-            with urllib.request.urlopen(req, timeout=5.0) as response:
+            with urllib.request.urlopen(req, timeout=2.0) as response:
                 if response.status == 200:
                     print(f"[HTTP] Event sent successfully to {url}")
                     return True
         except Exception:
             pass
+
             
     rate_limit_log(
         "http_send_failed",
@@ -340,7 +323,7 @@ class ThreadedCamera:
             self.source = source
 
         self.frame_skip = frame_skip
-        self.is_stream = isinstance(self.source, str) and ("rtsp" in str(self.source).lower() or "http" in str(self.source).lower())
+        self.is_stream = isinstance(self.source, str) and ("rtsp" in self.source.lower() or "http" in self.source.lower())
         self.is_cam_device = isinstance(self.source, int)
         
         try:
@@ -450,8 +433,12 @@ bin_path = os.path.join(script_dir, "yolov8n_ncnn_model", "model.ncnn.bin")
 if not os.path.exists(param_path) or not os.path.exists(bin_path):
     raise FileNotFoundError("Please make sure your model.ncnn.param and model.ncnn.bin exist in 'yolov8n_ncnn_model' directory.")
 
+if ncnn is None:
+    raise RuntimeError("Missing required Python package: 'ncnn'. Install with: pip install ncnn")
+assert ncnn is not None
+
 print("Initializing Raw NCNN Net...")
-net = ncnn.Net()
+net = ncnn.Net()  # type: ignore
 
 # Configure NCNN to utilize multiple CPU threads on the Pi 5
 net.opt.num_threads = 4
@@ -554,7 +541,7 @@ TARGET_CLASS_ID = 0
 # Here we map all three camera channels to the same local "04.mp4" file, 
 # but configure distinct, independent ROI coordinates for each virtual camera.
 # In production, replace self.source strings with RTSP IP camera links: "rtsp://..."
-camera_configs = [
+camera_configs: list[dict] = [  # type: ignore
     {
         "id": 1,
         "name": "Cam 1 - Delivery Area",
@@ -674,8 +661,8 @@ def letterbox(img, new_shape=(640, 640), color=(114, 114, 114)):
     if shape[::-1] != new_unpad:  # Resize
         img = cv2.resize(img, new_unpad, interpolation=cv2.INTER_LINEAR)
     
-    top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
-    left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+    top, bottom = round(dh - 0.1), round(dh + 0.1)
+    left, right = round(dw - 0.1), round(dw + 0.1)
     
     img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
     return img, r, (left, top)
@@ -826,7 +813,7 @@ def _inference_worker(configs, q, pending, stop_event):
         try:
             letterboxed_img, scale_ratio, (pad_left, pad_top) = letterbox(raw_frame, (INPUT_SIZE, INPUT_SIZE))
             rgb_img = cv2.cvtColor(letterboxed_img, cv2.COLOR_BGR2RGB)
-            mat_in = ncnn.Mat.from_pixels(rgb_img.tobytes(), ncnn.Mat.PixelType.PIXEL_RGB, INPUT_SIZE, INPUT_SIZE)
+            mat_in = ncnn.Mat.from_pixels(rgb_img.tobytes(), ncnn.Mat.PixelType.PIXEL_RGB, INPUT_SIZE, INPUT_SIZE)  # type: ignore
             mean_vals = [0.0, 0.0, 0.0]
             norm_vals = [1/255.0, 1/255.0, 1/255.0]
             mat_in.substract_mean_normalize(mean_vals, norm_vals)
@@ -973,7 +960,7 @@ class MJPEGStreamer:
                 # Method 2: query hostname addresses
                 for info in socket.getaddrinfo(socket.gethostname(), None):
                     ip = info[4][0]
-                    if info[0] == socket.AF_INET and not ip.startswith('127.'):
+                    if info[0] == socket.AF_INET and isinstance(ip, str) and not ip.startswith('127.'):
                         ips.append(ip)
             except:
                 pass
@@ -1050,7 +1037,7 @@ def _main():
 
     active_idx = 0
     focused_idx = None
-    shared_state = {"active_idx": active_idx, "focused_idx": focused_idx, "fps": 0.0}
+    shared_state: dict = {"active_idx": active_idx, "focused_idx": focused_idx, "fps": 0.0}  # type: ignore
     last_cam_idx = -1
     cam_switch_time = time.time()
     first_frame_diagnostic = True
@@ -1132,15 +1119,13 @@ def _main():
                 run_ncnn = False
                 has_motion = True
                 cam["has_motion"] = True
+                raw_detections = cam["last_raw_detections"]
                 if time_since_last_inf >= INFERENCE_INTERVAL:
                     has_motion = detect_motion_in_roi(frame, cam)
                     cam["has_motion"] = has_motion
                     if has_motion:
                         run_ncnn = True
-                    else:
-                        raw_detections = cam["last_raw_detections"]
                 else:
-                    raw_detections = cam["last_raw_detections"]
                     has_motion = len(raw_detections) > 0
                     cam["has_motion"] = has_motion
                 if run_ncnn:
@@ -1148,7 +1133,7 @@ def _main():
                         # First inference runs synchronously to print model diagnostic
                         letterboxed_img, scale_ratio, (pad_left, pad_top) = letterbox(raw_frame, (INPUT_SIZE, INPUT_SIZE))
                         rgb_img = cv2.cvtColor(letterboxed_img, cv2.COLOR_BGR2RGB)
-                        mat_in = ncnn.Mat.from_pixels(rgb_img.tobytes(), ncnn.Mat.PixelType.PIXEL_RGB, INPUT_SIZE, INPUT_SIZE)
+                        mat_in = ncnn.Mat.from_pixels(rgb_img.tobytes(), ncnn.Mat.PixelType.PIXEL_RGB, INPUT_SIZE, INPUT_SIZE)  # type: ignore
                         mean_vals = [0.0, 0.0, 0.0]
                         norm_vals = [1/255.0, 1/255.0, 1/255.0]
                         mat_in.substract_mean_normalize(mean_vals, norm_vals)
@@ -1266,6 +1251,7 @@ def _main():
                                 notify_camera_switched(prev_idx, camera_configs[prev_idx]["name"])
             else:
                 time.sleep(0.001)
+                continue
             
             # E. RENDERING VISUALS
             for t in detected_trucks:

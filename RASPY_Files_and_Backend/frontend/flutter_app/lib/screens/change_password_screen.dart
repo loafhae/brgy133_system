@@ -13,6 +13,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _currentCtrl = TextEditingController();
   final _newCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+  bool _obscureCurrent = true;
+  bool _obscureNew = true;
+  bool _obscureConfirm = true;
   final _formKey = GlobalKey<FormState>();
 
   @override
@@ -57,22 +60,43 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               ),
               TextFormField(
                 controller: _currentCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Current Password', border: OutlineInputBorder()),
+                obscureText: _obscureCurrent,
+                decoration: InputDecoration(
+                  labelText: 'Current Password',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscureCurrent ? Icons.visibility_off : Icons.visibility, color: Colors.grey[600]),
+                    onPressed: () => setState(() => _obscureCurrent = !_obscureCurrent),
+                  ),
+                ),
                 validator: (v) => v == null || v.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _newCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'New Password', border: OutlineInputBorder()),
+                obscureText: _obscureNew,
+                decoration: InputDecoration(
+                  labelText: 'New Password',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscureNew ? Icons.visibility_off : Icons.visibility, color: Colors.grey[600]),
+                    onPressed: () => setState(() => _obscureNew = !_obscureNew),
+                  ),
+                ),
                 validator: (v) => v == null || v.length < 6 ? 'At least 6 characters' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _confirmCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Confirm Password', border: OutlineInputBorder()),
+                obscureText: _obscureConfirm,
+                decoration: InputDecoration(
+                  labelText: 'Confirm Password',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscureConfirm ? Icons.visibility_off : Icons.visibility, color: Colors.grey[600]),
+                    onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                  ),
+                ),
                 validator: (v) => v != _newCtrl.text ? 'Passwords do not match' : null,
               ),
               const SizedBox(height: 24),
