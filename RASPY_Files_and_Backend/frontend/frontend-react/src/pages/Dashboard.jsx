@@ -173,18 +173,20 @@ export default function Dashboard() {
           </Typography>
         </Box>
         <Tooltip title="Refresh Dashboard Data">
-          <IconButton
-            onClick={() => fetchDashboardData(true)}
-            sx={{
-              bgcolor: '#ffffff',
-              border: '1px solid #e4e4e7',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-              '&:hover': { bgcolor: '#f4f4f5' },
-            }}
-            disabled={refreshing}
-          >
-            {refreshing ? <CircularProgress size={20} sx={{ color: '#990000' }} /> : <Refresh sx={{ color: '#990000' }} />}
-          </IconButton>
+          <span>
+            <IconButton
+              onClick={() => fetchDashboardData(true)}
+              sx={{
+                bgcolor: '#ffffff',
+                border: '1px solid #e4e4e7',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                '&:hover': { bgcolor: '#f4f4f5' },
+              }}
+              disabled={refreshing}
+            >
+              {refreshing ? <CircularProgress size={20} sx={{ color: '#990000' }} /> : <Refresh sx={{ color: '#990000' }} />}
+            </IconButton>
+          </span>
         </Tooltip>
       </Box>
 
@@ -264,67 +266,78 @@ export default function Dashboard() {
       </Paper>
 
       {/* Primary KPI Metric Cards */}
-      <Grid container spacing={2.5} sx={{ mb: 4 }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: 'repeat(2, 1fr)',
+            md: cards.length === 5 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+            lg: `repeat(${cards.length}, 1fr)`,
+          },
+          gap: 2.5,
+          mb: 4,
+        }}
+      >
         {cards.map((c, idx) => (
-          <Grid item xs={12} sm={6} md={12 / cards.length} key={idx}>
-            <Card
-              onClick={() => navigate(c.path)}
-              sx={{
-                p: 2.5,
-                bgcolor: '#ffffff',
-                border: '1px solid #e4e4e7',
-                borderTop: `4px solid ${c.accent}`,
-                borderRadius: 2.5,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease-in-out',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                '&:hover': {
-                  transform: 'translateY(-3px)',
-                  boxShadow: '0 8px 24px rgba(153, 0, 0, 0.08)',
-                  borderColor: '#d4d4d8',
-                },
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                <Box
-                  sx={{
-                    p: 1,
-                    borderRadius: 2,
-                    bgcolor: '#fafafa',
-                    border: '1px solid #f4f4f5',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {c.icon}
-                </Box>
-                {c.badge ? (
-                  <Chip
-                    label={c.badge}
-                    size="small"
-                    sx={{ fontSize: '0.68rem', fontWeight: 700, bgcolor: '#fef3c7', color: '#b45309' }}
-                  />
-                ) : (
-                  <ArrowForward sx={{ color: '#a1a1aa', fontSize: 16 }} />
-                )}
+          <Card
+            key={idx}
+            onClick={() => navigate(c.path)}
+            sx={{
+              p: 2.5,
+              bgcolor: '#ffffff',
+              border: '1px solid #e4e4e7',
+              borderTop: `4px solid ${c.accent}`,
+              borderRadius: 2.5,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease-in-out',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              '&:hover': {
+                transform: 'translateY(-3px)',
+                boxShadow: '0 8px 24px rgba(153, 0, 0, 0.08)',
+                borderColor: '#d4d4d8',
+              },
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+              <Box
+                sx={{
+                  p: 1,
+                  borderRadius: 2,
+                  bgcolor: '#fafafa',
+                  border: '1px solid #f4f4f5',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {c.icon}
               </Box>
+              {c.badge ? (
+                <Chip
+                  label={c.badge}
+                  size="small"
+                  sx={{ fontSize: '0.68rem', fontWeight: 700, bgcolor: '#fef3c7', color: '#b45309' }}
+                />
+              ) : (
+                <ArrowForward sx={{ color: '#a1a1aa', fontSize: 16 }} />
+              )}
+            </Box>
 
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.25 }}>
-                {c.title}
-              </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 800, color: '#18181b', lineHeight: 1 }}>
-                {loading ? <CircularProgress size={24} sx={{ color: c.accent }} /> : c.count}
-              </Typography>
-            </Card>
-          </Grid>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.25 }}>
+              {c.title}
+            </Typography>
+            <Typography variant="h4" sx={{ fontWeight: 800, color: '#18181b', lineHeight: 1 }}>
+              {loading ? <CircularProgress size={24} sx={{ color: c.accent }} /> : c.count}
+            </Typography>
+          </Card>
         ))}
-      </Grid>
+      </Box>
 
       {/* Main Operational Content Grid */}
       <Grid container spacing={3}>
         {/* Left Column (8 cols): Announcements & Resident Feedback */}
-        <Grid item xs={12} lg={8}>
+        <Grid size={{ xs: 12, lg: 8 }}>
           <Stack spacing={3}>
             {/* Active Announcements Module */}
             <Paper elevation={0} sx={{ p: 3, borderRadius: 2.5, border: '1px solid #e4e4e7', bgcolor: '#ffffff' }}>
@@ -367,7 +380,7 @@ export default function Dashboard() {
               {announcements.length > 0 ? (
                 <Grid container spacing={2}>
                   {announcements.map((item) => (
-                    <Grid item xs={12} sm={6} key={item.announcement_id}>
+                    <Grid size={{ xs: 12, sm: 6 }} key={item.announcement_id}>
                       <Card
                         variant="outlined"
                         sx={{
@@ -478,7 +491,7 @@ export default function Dashboard() {
         </Grid>
 
         {/* Right Column (4 cols): Vision-Trak Logs & Management Shortcuts */}
-        <Grid item xs={12} lg={4}>
+        <Grid size={{ xs: 12, lg: 4 }}>
           <Stack spacing={3}>
             {/* Live Camera Tracking Logs */}
             <Paper elevation={0} sx={{ p: 3, borderRadius: 2.5, border: '1px solid #e4e4e7', bgcolor: '#ffffff' }}>
@@ -547,113 +560,6 @@ export default function Dashboard() {
                   </Typography>
                 </Box>
               )}
-            </Paper>
-
-            {/* Quick Management Shortcuts */}
-            <Paper elevation={0} sx={{ p: 3, borderRadius: 2.5, border: '1px solid #e4e4e7', bgcolor: '#ffffff' }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#18181b', mb: 2 }}>
-                Management Shortcuts
-              </Typography>
-              <Stack spacing={1.25}>
-                {isSuperAdmin && (
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<People fontSize="small" />}
-                    endIcon={<ArrowForward fontSize="small" />}
-                    onClick={() => navigate('/users')}
-                    sx={{
-                      justifyContent: 'space-between',
-                      color: '#18181b',
-                      borderColor: '#e4e4e7',
-                      py: 1,
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      '&:hover': { bgcolor: '#fef2f2', borderColor: '#990000', color: '#990000' },
-                    }}
-                  >
-                    User Accounts &amp; Roles
-                  </Button>
-                )}
-
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<Person fontSize="small" />}
-                  endIcon={<ArrowForward fontSize="small" />}
-                  onClick={() => navigate('/residents')}
-                  sx={{
-                    justifyContent: 'space-between',
-                    color: '#18181b',
-                    borderColor: '#e4e4e7',
-                    py: 1,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    '&:hover': { bgcolor: '#ecfdf5', borderColor: '#059669', color: '#059669' },
-                  }}
-                >
-                  Master Resident Directory
-                </Button>
-
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<Assessment fontSize="small" />}
-                  endIcon={<ArrowForward fontSize="small" />}
-                  onClick={() => navigate('/reports')}
-                  sx={{
-                    justifyContent: 'space-between',
-                    color: '#18181b',
-                    borderColor: '#e4e4e7',
-                    py: 1,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    '&:hover': { bgcolor: '#f4f4f5', borderColor: '#71717a' },
-                  }}
-                >
-                  Official Reports &amp; Exports
-                </Button>
-
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<History fontSize="small" />}
-                  endIcon={<ArrowForward fontSize="small" />}
-                  onClick={() => navigate('/activity')}
-                  sx={{
-                    justifyContent: 'space-between',
-                    color: '#18181b',
-                    borderColor: '#e4e4e7',
-                    py: 1,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    '&:hover': { bgcolor: '#f4f4f5', borderColor: '#71717a' },
-                  }}
-                >
-                  System Activity Logs
-                </Button>
-
-                {isSuperAdmin && (
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<Settings fontSize="small" />}
-                    endIcon={<ArrowForward fontSize="small" />}
-                    onClick={() => navigate('/settings')}
-                    sx={{
-                      justifyContent: 'space-between',
-                      color: '#18181b',
-                      borderColor: '#e4e4e7',
-                      py: 1,
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      '&:hover': { bgcolor: '#f4f4f5', borderColor: '#71717a' },
-                    }}
-                  >
-                    System Configuration
-                  </Button>
-                )}
-              </Stack>
             </Paper>
           </Stack>
         </Grid>

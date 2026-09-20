@@ -4,7 +4,7 @@ import {
   Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
   AppBar, Toolbar, Typography, IconButton, Avatar, Menu, MenuItem,
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Snackbar, TextField, Chip,
-  Divider,
+  Divider, Tooltip,
 } from '@mui/material';
 import {
   Menu as MenuIcon, Dashboard, People, Person, Campaign,
@@ -14,7 +14,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/client';
 
-const DRAWER_WIDTH = 270;
+const EXPANDED_WIDTH = 260;
+const COLLAPSED_WIDTH = 76;
 
 const navGroups = [
   {
@@ -53,6 +54,7 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [picDialog, setPicDialog] = useState(false);
   const [profileDialog, setProfileDialog] = useState(false);
@@ -61,6 +63,8 @@ export default function DashboardLayout() {
   const [uploading, setUploading] = useState(false);
   const [snack, setSnack] = useState('');
   const fileRef = useRef(null);
+
+  const drawerWidth = desktopCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH;
 
   // Realtime digital clock (Philippine Standard Time)
   const [currentTime, setCurrentTime] = useState('');
@@ -105,145 +109,219 @@ export default function DashboardLayout() {
     return location.pathname === path;
   };
 
-  const drawerContent = (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#ffffff' }}>
-      {/* Brand Header with Official Crimson Red */}
-      <Box sx={{ p: 2.5, display: 'flex', alignItems: 'center', gap: 1.5, borderBottom: '1px solid #e4e4e7' }}>
+  const renderDrawerContent = (forceExpanded = false) => {
+    const expanded = forceExpanded || !desktopCollapsed;
+    return (
+      <Box
+        sx={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          bgcolor: '#ffffff',
+          overflowX: 'hidden',
+          transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        {/* Brand Header */}
         <Box
-          component="img"
-          src="/logo.png"
-          alt="Barangay 133 Logo"
           sx={{
-            width: 44,
-            height: 44,
-            borderRadius: '50%',
-            p: 0.3,
-            border: '2px solid #990000',
-            bgcolor: '#ffffff',
-          }}
-          onError={(e) => { e.target.style.display = 'none'; }}
-        />
-        <Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#990000', lineHeight: 1.15 }}>
-            BARANGAY 133
-          </Typography>
-          <Typography variant="caption" sx={{ color: '#71717a', fontSize: '0.72rem', letterSpacing: 0.5, textTransform: 'uppercase', fontWeight: 600 }}>
-            Tondo, Manila • Vision-Trak
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Role Pill Banner */}
-      <Box sx={{ px: 2.5, py: 1.5, bgcolor: '#fafafa', borderBottom: '1px solid #e4e4e7', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#059669' }} />
-          <Typography variant="caption" sx={{ fontWeight: 600, color: '#3f3f46' }}>
-            {user?.role === 'super_admin' ? 'Super Admin' : 'Barangay Official'}
-          </Typography>
-        </Box>
-        <Chip
-          label={user?.username || 'User'}
-          size="small"
-          sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: '#f4f4f5', color: '#18181b' }}
-        />
-      </Box>
-
-      {/* Navigation Groups */}
-      <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 1.5, py: 2 }}>
-        {navGroups.map((group) => {
-          const visibleItems = group.items.filter((item) =>
-            item.roles.some((r) => hasRole(r))
-          );
-          if (visibleItems.length === 0) return null;
-
-          return (
-            <Box key={group.category} sx={{ mb: 2 }}>
-              <Typography
-                variant="caption"
-                sx={{
-                  px: 1.5,
-                  mb: 0.75,
-                  display: 'block',
-                  fontSize: '0.68rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  color: '#a1a1aa',
-                }}
-              >
-                {group.category}
-              </Typography>
-              <List disablePadding>
-                {visibleItems.map((item) => {
-                  const active = isCurrentPath(item.path);
-                  return (
-                    <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
-                      <ListItemButton
-                        selected={active}
-                        onClick={() => {
-                          navigate(item.path);
-                          setMobileOpen(false);
-                        }}
-                        sx={{
-                          borderRadius: 2,
-                          py: 0.9,
-                          px: 1.5,
-                          transition: 'all 0.15s ease',
-                          bgcolor: active ? '#fef2f2 !important' : 'transparent',
-                          color: active ? '#990000' : '#3f3f46',
-                          fontWeight: active ? 700 : 500,
-                          '&:hover': {
-                            bgcolor: active ? '#fef2f2' : '#f4f4f5',
-                            color: '#990000',
-                          },
-                        }}
-                      >
-                        <ListItemIcon
-                          sx={{
-                            minWidth: 32,
-                            color: active ? '#990000' : '#71717a',
-                          }}
-                        >
-                          {item.icon}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={item.label}
-                          primaryTypographyProps={{
-                            fontSize: '0.86rem',
-                            fontWeight: active ? 700 : 500,
-                          }}
-                        />
-                      </ListItemButton>
-                    </ListItem>
-                  );
-                })}
-              </List>
-            </Box>
-          );
-        })}
-      </Box>
-
-      {/* Drawer Footer: Sign Out */}
-      <Box sx={{ p: 2, borderTop: '1px solid #e4e4e7', bgcolor: '#fafafa' }}>
-        <Button
-          fullWidth
-          variant="outlined"
-          size="small"
-          color="error"
-          startIcon={<Logout fontSize="small" />}
-          onClick={() => { logout(); navigate('/login'); }}
-          sx={{
-            fontSize: '0.82rem',
-            fontWeight: 700,
-            borderColor: '#fecaca',
-            color: '#990000',
-            '&:hover': { bgcolor: '#fef2f2', borderColor: '#990000' },
+            p: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: expanded ? 'flex-start' : 'center',
+            borderBottom: '1px solid #e4e4e7',
+            minHeight: 64,
+            boxSizing: 'border-box',
           }}
         >
-          Sign Out
-        </Button>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, overflow: 'hidden' }}>
+            <Box
+              component="img"
+              src="/logo.png"
+              alt="Barangay 133 Logo"
+              sx={{
+                width: 38,
+                height: 38,
+                borderRadius: '50%',
+                p: 0.2,
+                border: '2px solid #990000',
+                bgcolor: '#ffffff',
+                flexShrink: 0,
+              }}
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+            {expanded && (
+              <Box sx={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#990000', lineHeight: 1.15, fontSize: '0.92rem' }}>
+                  BARANGAY 133
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#71717a', fontSize: '0.72rem', letterSpacing: 0.5, textTransform: 'uppercase', fontWeight: 600 }}>
+                  Tondo • Vision-Trak
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </Box>
+
+        {/* Role Pill Banner */}
+        <Box
+          sx={{
+            px: expanded ? 2 : 1,
+            py: 1.25,
+            bgcolor: '#fafafa',
+            borderBottom: '1px solid #e4e4e7',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: expanded ? 'space-between' : 'center',
+          }}
+        >
+          <Tooltip title={user?.role === 'super_admin' ? 'Super Admin' : 'Barangay Official'} placement="right" arrow>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#059669', flexShrink: 0 }} />
+              {expanded && (
+                <Typography variant="caption" sx={{ fontWeight: 600, color: '#3f3f46', whiteSpace: 'nowrap' }}>
+                  {user?.role === 'super_admin' ? 'Super Admin' : 'Barangay Official'}
+                </Typography>
+              )}
+            </Box>
+          </Tooltip>
+          {expanded && (
+            <Chip
+              label={user?.username || 'User'}
+              size="small"
+              sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: '#f4f4f5', color: '#18181b' }}
+            />
+          )}
+        </Box>
+
+        {/* Navigation Groups */}
+        <Box sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden', px: 1, py: 2 }}>
+          {navGroups.map((group) => {
+            const visibleItems = group.items.filter((item) =>
+              item.roles.some((r) => hasRole(r))
+            );
+            if (visibleItems.length === 0) return null;
+
+            return (
+              <Box key={group.category} sx={{ mb: 2 }}>
+                {expanded ? (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      px: 1.5,
+                      mb: 0.75,
+                      display: 'block',
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      color: '#a1a1aa',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {group.category}
+                  </Typography>
+                ) : (
+                  <Divider sx={{ my: 1, mx: 1, borderColor: '#f4f4f5' }} />
+                )}
+
+                <List disablePadding>
+                  {visibleItems.map((item) => {
+                    const active = isCurrentPath(item.path);
+                    return (
+                      <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
+                        <Tooltip title={!expanded ? item.label : ''} placement="right" arrow>
+                          <ListItemButton
+                            selected={active}
+                            onClick={() => {
+                              navigate(item.path);
+                              setMobileOpen(false);
+                            }}
+                            sx={{
+                              borderRadius: 2,
+                              py: 1,
+                              px: expanded ? 1.5 : 0,
+                              justifyContent: expanded ? 'initial' : 'center',
+                              transition: 'all 0.15s ease',
+                              bgcolor: active ? '#fef2f2 !important' : 'transparent',
+                              color: active ? '#990000' : '#3f3f46',
+                              fontWeight: active ? 700 : 500,
+                              minHeight: 44,
+                              '&:hover': {
+                                bgcolor: active ? '#fef2f2' : '#f4f4f5',
+                                color: '#990000',
+                              },
+                            }}
+                          >
+                            <ListItemIcon
+                              sx={{
+                                minWidth: 0,
+                                mr: expanded ? 1.75 : 0,
+                                justifyContent: 'center',
+                                color: active ? '#990000' : '#71717a',
+                              }}
+                            >
+                              {item.icon}
+                            </ListItemIcon>
+                            {expanded && (
+                              <ListItemText
+                                primary={item.label}
+                                primaryTypographyProps={{
+                                  fontSize: '0.86rem',
+                                  fontWeight: active ? 700 : 500,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              />
+                            )}
+                          </ListItemButton>
+                        </Tooltip>
+                      </ListItem>
+                    );
+                  })}
+                </List>
+              </Box>
+            );
+          })}
+        </Box>
+
+        {/* Drawer Footer: Sign Out */}
+        <Box sx={{ p: expanded ? 2 : 1, borderTop: '1px solid #e4e4e7', bgcolor: '#fafafa', display: 'flex', justifyContent: 'center' }}>
+          {expanded ? (
+            <Button
+              fullWidth
+              variant="outlined"
+              size="small"
+              color="error"
+              startIcon={<Logout fontSize="small" />}
+              onClick={() => { logout(); navigate('/login'); }}
+              sx={{
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                borderColor: '#fecaca',
+                color: '#990000',
+                '&:hover': { bgcolor: '#fef2f2', borderColor: '#990000' },
+              }}
+            >
+              Sign Out
+            </Button>
+          ) : (
+            <Tooltip title="Sign Out" placement="right" arrow>
+              <IconButton
+                size="small"
+                onClick={() => { logout(); navigate('/login'); }}
+                sx={{
+                  color: '#990000',
+                  border: '1px solid #fecaca',
+                  '&:hover': { bgcolor: '#fef2f2' },
+                }}
+              >
+                <Logout fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
       </Box>
-    </Box>
-  );
+    );
+  };
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#fafafa' }}>
@@ -251,23 +329,33 @@ export default function DashboardLayout() {
       <AppBar
         position="fixed"
         sx={{
-          width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
-          ml: { md: `${DRAWER_WIDTH}px` },
+          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
+          ml: { xs: 0, md: `${drawerWidth}px` },
           bgcolor: '#ffffff',
           color: '#18181b',
           boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.04)',
           borderBottom: '1px solid #e4e4e7',
+          transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1), margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         <Toolbar sx={{ minHeight: '64px', px: { xs: 2, sm: 3 } }}>
-          <IconButton
-            edge="start"
-            color="inherit"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            sx={{ mr: 2, display: { md: 'none' }, color: '#52525b' }}
-          >
-            <MenuIcon />
-          </IconButton>
+          {/* Hamburger Menu Button (toggles mobile drawer on mobile, collapses/expands sidebar on desktop) */}
+          <Tooltip title={desktopCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}>
+            <IconButton
+              edge="start"
+              color="inherit"
+              onClick={() => {
+                if (window.innerWidth < 900) {
+                  setMobileOpen(!mobileOpen);
+                } else {
+                  setDesktopCollapsed(!desktopCollapsed);
+                }
+              }}
+              sx={{ mr: 2, color: '#52525b', '&:hover': { bgcolor: '#f4f4f5', color: '#990000' } }}
+            >
+              <MenuIcon />
+            </IconButton>
+          </Tooltip>
 
           {/* Left Title */}
           <Box sx={{ flexGrow: 1 }}>
@@ -347,31 +435,39 @@ export default function DashboardLayout() {
       </AppBar>
 
       {/* Side Navigation Drawer */}
-      <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
+      <Box
+        component="nav"
+        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 }, transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)' }}
+      >
+        {/* Mobile Temporary Drawer */}
         <Drawer
           variant="temporary"
           open={mobileOpen}
           onClose={() => setMobileOpen(false)}
           sx={{
             display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' },
+            '& .MuiDrawer-paper': { width: EXPANDED_WIDTH, boxSizing: 'border-box' },
           }}
         >
-          {drawerContent}
+          {renderDrawerContent(true)}
         </Drawer>
+
+        {/* Desktop Permanent Drawer (Collapsible via Hamburger, Non-Hoverable) */}
         <Drawer
           variant="permanent"
           sx={{
             display: { xs: 'none', md: 'block' },
             '& .MuiDrawer-paper': {
-              width: DRAWER_WIDTH,
+              width: drawerWidth,
               boxSizing: 'border-box',
               borderRight: '1px solid #e4e4e7',
+              overflowX: 'hidden',
+              transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
             },
           }}
           open
         >
-          {drawerContent}
+          {renderDrawerContent()}
         </Drawer>
       </Box>
 
@@ -385,7 +481,8 @@ export default function DashboardLayout() {
           minHeight: 'calc(100vh - 64px)',
           bgcolor: '#fafafa',
           boxSizing: 'border-box',
-          width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
+          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
+          transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         <Box sx={{ maxWidth: '1440px', mx: 'auto' }}>

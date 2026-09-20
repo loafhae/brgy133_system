@@ -147,8 +147,8 @@ export default function Home() {
         }}
       >
         <Container maxWidth="lg">
-          <Grid container spacing={6} alignItems="center">
-            <Grid item xs={12} md={7}>
+          <Grid container spacing={6} sx={{ alignItems: 'center' }}>
+            <Grid size={{ xs: 12, md: 7 }}>
               <Chip
                 label="Vision-Trak IoT Monitoring Platform"
                 size="small"
@@ -210,7 +210,7 @@ export default function Home() {
             </Grid>
 
             {/* Right: Live IoT Status Card */}
-            <Grid item xs={12} md={5}>
+            <Grid size={{ xs: 12, md: 5 }}>
               <Paper
                 elevation={0}
                 sx={{
@@ -238,9 +238,11 @@ export default function Home() {
                     </Typography>
                   </Box>
                   <Tooltip title="Refresh Status">
-                    <IconButton size="small" onClick={fetchStatus} disabled={loadingStatus}>
-                      <Refresh fontSize="small" />
-                    </IconButton>
+                    <span>
+                      <IconButton size="small" onClick={fetchStatus} disabled={loadingStatus}>
+                        <Refresh fontSize="small" />
+                      </IconButton>
+                    </span>
                   </Tooltip>
                 </Box>
 
@@ -305,7 +307,7 @@ export default function Home() {
           </Typography>
 
           <Grid container spacing={3}>
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <Paper
                 elevation={0}
                 sx={{
@@ -328,7 +330,7 @@ export default function Home() {
               </Paper>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <Paper
                 elevation={0}
                 sx={{
@@ -351,7 +353,7 @@ export default function Home() {
               </Paper>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <Paper
                 elevation={0}
                 sx={{

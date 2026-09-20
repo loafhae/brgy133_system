@@ -862,21 +862,54 @@ class MJPEGStreamer:
     def start(self):
         ref = self
         class Handler(server.BaseHTTPRequestHandler):
+            def do_OPTIONS(self):
+                self.send_response(200)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+                self.send_header('Access-Control-Allow-Headers', '*')
+                self.end_headers()
+
             def do_GET(self):
-                if self.path == '/stream':
+                clean_path = self.path.split('?')[0]
+                if clean_path == '/stream':
                     self._serve_stream()
-                elif self.path in ('/status', '/api/status'):
+                elif clean_path in ('/status', '/api/status'):
                     self._serve_status()
-                elif self.path in ('/', '/dashboard'):
+                elif clean_path in ('/', '/dashboard'):
                     self._serve_dashboard()
+                elif clean_path.startswith('/snapshots/') or clean_path.startswith('/snapshot/'):
+                    self._serve_snapshot(clean_path)
                 else:
                     self.send_response(404)
+                    self.send_header('Access-Control-Allow-Origin', '*')
                     self.end_headers()
+
+            def _serve_snapshot(self, path):
+                filename = os.path.basename(path)
+                snap_path = os.path.join(SNAPSHOT_DIR, filename)
+                if os.path.exists(snap_path):
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'image/jpeg')
+                    self.send_header('Cache-Control', 'public, max-age=86400')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    try:
+                        with open(snap_path, 'rb') as f:
+                            self.wfile.write(f.read())
+                    except Exception:
+                        pass
+                else:
+                    self.send_response(404)
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+
             def _serve_stream(self):
                 self.send_response(200)
                 self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
                 self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                 self.send_header('Pragma', 'no-cache')
+                self.send_header('Expires', '0')
+                self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 try:
                     last_sent = None
@@ -888,13 +921,13 @@ class MJPEGStreamer:
                             last_sent = data
                             self.wfile.write(b'--frame\r\n')
                             self.wfile.write(b'Content-Type: image/jpeg\r\n')
-                            self.wfile.write(f'Content-Length: {len(data)}\r\n'.encode())
-                            self.wfile.write(b'\r\n')
+                            self.wfile.write(f'Content-Length: {len(data)}\r\n\r\n'.encode())
                             self.wfile.write(data)
                             self.wfile.write(b'\r\n')
                         time.sleep(0.033)
                 except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
                     pass
+
             def _serve_status(self):
                 s = ref._state
                 active_idx = s.get("active_idx", 0)
@@ -921,12 +954,15 @@ class MJPEGStreamer:
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Cache-Control', 'no-cache')
+                self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 self.wfile.write(payload.encode())
+
             def _serve_dashboard(self):
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/html')
                 self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 dashboard_path = os.path.join(script_dir, 'dashboard.html')
                 try:
@@ -934,6 +970,7 @@ class MJPEGStreamer:
                         self.wfile.write(f.read())
                 except FileNotFoundError:
                     self.wfile.write(b'<h1>dashboard.html not found</h1>')
+
             def log_message(self, format, *args):
                 pass
 

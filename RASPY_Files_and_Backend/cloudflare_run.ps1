@@ -1,16 +1,48 @@
 $rootDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $rootDir
 
+# Setup console window title
+$host.UI.RawUI.WindowTitle = "Vision-Trak System Dashboard"
+
+Clear-Host
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "         Cloudflare Tunnel Launcher - Vision-Trak           " -ForegroundColor Cyan
+Write-Host "         Vision-Trak - Unified System Launcher              " -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# ---- check / download cloudflared ----
+# Array to keep track of started processes for clean shutdown
+$script:runningProcesses = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
+
+function Stop-AllServices {
+    Write-Host ""
+    Write-Host "[SHUTDOWN] Stopping all background services..." -ForegroundColor Yellow
+    
+    # Terminate tracked child processes
+    foreach ($proc in $script:runningProcesses) {
+        if ($proc -and -not $proc.HasExited) {
+            try {
+                Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            } catch {}
+        }
+    }
+    
+    # Terminate cloudflared and child node / python processes cleanly
+    Get-Process "cloudflared" -ErrorAction SilentlyContinue | Stop-Process -Force
+    
+    # Clean up temporary log files
+    Remove-Item "tunnel_*.log", "tunnel_stream_out.log", "tunnel_fe_out.log", "tunnel_be_out.log" -ErrorAction SilentlyContinue
+    
+    Write-Host "[OK] All services stopped cleanly." -ForegroundColor Green
+}
+
+# Register cleanup on exit
+$cleanupBlock = { Stop-AllServices }
+
+# ---- 1. Check / Download Cloudflared ----
 $cf = "cloudflared.exe"
 $cfPath = Join-Path $rootDir $cf
 if (-not (Test-Path $cfPath)) {
-    Write-Host "[INFO] Downloading cloudflared..."
+    Write-Host "[INFO] Downloading cloudflared..." -ForegroundColor Cyan
     try {
         Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile $cfPath
     } catch {
@@ -21,91 +53,118 @@ if (-not (Test-Path $cfPath)) {
 } else {
     Write-Host "[OK] cloudflared.exe found" -ForegroundColor Green
 }
-Write-Host ""
 
-# ---- resolve python executable ----
+# ---- 2. Resolve Python Executable ----
 $pyExe = "python.exe"
-$venvPython = Join-Path $rootDir "backend\venv\Scripts\python.exe"
-if (Test-Path $venvPython) { $pyExe = $venvPython }
+$possibleVenvs = @(
+    (Join-Path $rootDir "..\..\.venv\Scripts\python.exe"),
+    (Join-Path $rootDir "backend\venv\Scripts\python.exe"),
+    (Join-Path $rootDir ".venv\Scripts\python.exe")
+)
+foreach ($venv in $possibleVenvs) {
+    if (Test-Path $venv) {
+        $pyExe = (Resolve-Path $venv).Path
+        break
+    }
+}
+Write-Host "[OK] Python environment: $pyExe" -ForegroundColor Green
 
-# ---- choose mode ----
-Write-Host "Select mode:"
-Write-Host "  [1] Cloudflare Tunnel (accessible from internet)"
-Write-Host "  [2] Local Network only (PC / LAN IP address)"
-$mode = Read-Host "Choice (1 or 2)"
+# ---- 3. Mode Selection ----
+Write-Host ""
+Write-Host "Select Startup Mode:" -ForegroundColor Yellow
+Write-Host "  [1] Cloudflare Tunnel (Internet / Public access)"
+Write-Host "  [2] Local Network Only (PC / Wi-Fi LAN access)"
+$mode = Read-Host "Choice (1 or 2, default: 1)"
+if (-not $mode) { $mode = "1" }
 $useCF = ($mode -eq "1")
 Write-Host ""
 
-# ---- clean up ----
+# ---- 4. Clean up previous lingering processes ----
 Get-Process "cloudflared" -ErrorAction SilentlyContinue | Stop-Process -Force
-Get-Process "python*" -ErrorAction SilentlyContinue | Stop-Process -Force
-Remove-Item "tunnel_be.log", "tunnel_fe.log", "tunnel_stream.log", "tunnel_be_url.txt", "tunnel_fe_url.txt", "tunnel_stream_url.txt" -ErrorAction SilentlyContinue
-Start-Sleep 2
+Remove-Item "tunnel_*.log", "tunnel_*.txt" -ErrorAction SilentlyContinue
 
 $bePort = 8000
 $fePort = 5173
 $streamPort = 8080
 $mysqlOk = $false
 
-# ---- check/start MariaDB ----
-$mysqlPaths = @(
-    "C:\xampp\mysql\bin\mysqld.exe",
-    "C:\Program Files\MariaDB*\bin\mysqld.exe",
-    "C:\Program Files\MySQL\MySQL Server*\bin\mysqld.exe"
-)
-$mysqlStarted = $false
+# ---- 5. Check / Start MariaDB / MySQL ----
 try {
     $testConn = [System.Net.Sockets.TcpClient]::new()
     $testConn.ConnectAsync("127.0.0.1", 3306).Wait(1000)
     if ($testConn.Connected) { $testConn.Close(); $mysqlOk = $true }
     else { $testConn.Close() }
 } catch {}
+
 if (-not $mysqlOk) {
-    Write-Host "[DB] MariaDB not running - searching for XAMPP..."
-    $mysqld = Get-ChildItem "C:\xampp\mysql\bin\mysqld.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
-    if ($mysqld) {
-        Write-Host "[DB] Starting MariaDB from $mysqld..."
-        Start-Process -WindowStyle Minimized -FilePath $mysqld
-        Start-Sleep 3
+    Write-Host "[DB] MariaDB not detected - searching XAMPP..." -ForegroundColor Cyan
+    $xamppStart = "C:\xampp\mysql_start.bat"
+    $mysqld = "C:\xampp\mysql\bin\mysqld.exe"
+    $myIni = "C:\xampp\mysql\bin\my.ini"
+
+    if (Test-Path $xamppStart) {
+        Write-Host "[DB] Starting MariaDB via XAMPP batch runner..." -ForegroundColor Cyan
+        $dbProc = Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$xamppStart`"" -WorkingDirectory "C:\xampp" -WindowStyle Hidden -PassThru
+        $script:runningProcesses.Add($dbProc)
+    } elseif (Test-Path $mysqld) {
+        Write-Host "[DB] Starting MariaDB from $mysqld..." -ForegroundColor Cyan
+        $argList = if (Test-Path $myIni) { "--defaults-file=`"$myIni`" --standalone" } else { "--standalone" }
+        $dbProc = Start-Process -FilePath $mysqld -ArgumentList $argList -WorkingDirectory "C:\xampp\mysql" -WindowStyle Hidden -PassThru
+        $script:runningProcesses.Add($dbProc)
+    } else {
+        Write-Host "[WARN] XAMPP not found at C:\xampp - please start MySQL manually if needed" -ForegroundColor Yellow
+    }
+
+    # Verify MariaDB started and is accepting connections
+    for ($i = 0; $i -lt 10; $i++) {
+        Start-Sleep 1
         try {
             $testConn = [System.Net.Sockets.TcpClient]::new()
-            $testConn.ConnectAsync("127.0.0.1", 3306).Wait(3000)
-            if ($testConn.Connected) { $testConn.Close(); $mysqlOk = $true }
-            else { $testConn.Close() }
+            $testConn.ConnectAsync("127.0.0.1", 3306).Wait(1000)
+            if ($testConn.Connected) {
+                $testConn.Close()
+                $mysqlOk = $true
+                break
+            }
+            $testConn.Close()
         } catch {}
-        if ($mysqlOk) { Write-Host "[DB] MariaDB started!" -ForegroundColor Green }
-        else { Write-Host "[DB] Could not start MariaDB - start XAMPP manually" -ForegroundColor Yellow }
+    }
+
+    if ($mysqlOk) {
+        Write-Host "[OK] MariaDB started and connected successfully on port 3306!" -ForegroundColor Green
     } else {
-        Write-Host "[DB] XAMPP not found at C:\xampp - start MariaDB/MySQL manually" -ForegroundColor Yellow
+        Write-Host "[WARN] Could not auto-start MariaDB - please ensure Apache/MySQL is started in XAMPP" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "[DB] MariaDB is already running" -ForegroundColor Green
+    Write-Host "[OK] MariaDB is already running on port 3306" -ForegroundColor Green
 }
-Write-Host ""
 
-# ---- helper: wait for HTTP ----
-function Wait-Http($port, $timeout = 10, $path = "/docs") {
+# Helper: Wait for HTTP port
+function Wait-Http($port, $timeout = 15, $path = "/docs") {
     for ($i = 0; $i -lt $timeout; $i++) {
         Start-Sleep 1
-        try { $r = Invoke-WebRequest "http://localhost:$port$path" -UseBasicParsing -TimeoutSec 2; if ($r.StatusCode -eq 200) { return $true } } catch {}
+        try {
+            $r = Invoke-WebRequest "http://localhost:$port$path" -UseBasicParsing -TimeoutSec 2
+            if ($r.StatusCode -eq 200) { return $true }
+        } catch {}
     }
     return $false
 }
 
-# ---- helper: start tunnel in a visible window + log file ----
-function Start-Tunnel($port, $label, $logFile) {
-    Write-Host "[TUNNEL] Starting $label tunnel (port $port)..." -ForegroundColor Cyan
+# Helper: Start hidden tunnel and capture output
+function Start-HiddenTunnel($port, $label, $logFile) {
     $logPath = Join-Path $rootDir $logFile
-    $wrapper = Join-Path $rootDir "_tunnel_wrapper_${label}.ps1"
-@"
-`$log = "$logPath"
-& "$cfPath" tunnel --url http://localhost:$port 2>&1 | ForEach-Object { `$_; `$_ | Out-File `$log -Append }
-"@ | Out-File $wrapper -Encoding ascii
-    Start-Process -WindowStyle Normal -FilePath "powershell.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$wrapper`""
+    $proc = Start-Process -FilePath $cfPath `
+        -ArgumentList "tunnel --url http://localhost:$port" `
+        -RedirectStandardError $logPath `
+        -WindowStyle Hidden `
+        -PassThru
+    $script:runningProcesses.Add($proc)
+    return $proc
 }
 
-# ---- helper: extract tunnel URL from log ----
-function Get-TunnelUrl($logFile, $timeout = 30) {
+# Helper: Extract Tunnel URL from log
+function Get-TunnelUrl($logFile, $timeout = 25) {
     $logPath = Join-Path $rootDir $logFile
     for ($i = 0; $i -lt $timeout; $i++) {
         Start-Sleep 1
@@ -121,138 +180,154 @@ $beUrl = $null
 $feUrl = $null
 $streamUrl = $null
 
-if ($useCF) {
-    # ========== 1. START BACKEND FIRST ==========
-    Write-Host "[1/4] Starting backend on port $bePort..."
-    Start-Process -WindowStyle Minimized -FilePath "cmd.exe" -ArgumentList "/c cd /d `"$rootDir\backend`" && title Backend && `"$pyExe`" -m uvicorn app.main:app --host 0.0.0.0 --port $bePort --reload --app-dir ."
-    Write-Host "[1/4] Waiting for backend (15s)..."
-    if (Wait-Http $bePort 15) { Write-Host "[1/4] Backend ready!" -ForegroundColor Green }
-    else { Write-Host "[1/4] Backend may still be starting..." -ForegroundColor Yellow }
+try {
+    # ========== 1. START BACKEND ==========
+    Write-Host ""
+    Write-Host "[1/4] Starting FastAPI Backend (port $bePort)..." -ForegroundColor Cyan
+    $beProc = Start-Process -FilePath $pyExe `
+        -ArgumentList "-m uvicorn app.main:app --host 0.0.0.0 --port $bePort --reload --app-dir ." `
+        -WorkingDirectory (Join-Path $rootDir "backend") `
+        -WindowStyle Hidden `
+        -PassThru
+    $script:runningProcesses.Add($beProc)
 
-    # ========== 2. START BACKEND TUNNEL ==========
-    Write-Host "[2/4] Starting Backend Cloudflare tunnel..."
-    Start-Tunnel $bePort "Backend" "tunnel_be.log"
-    Start-Sleep 2
+    if (Wait-Http $bePort 15) {
+        Write-Host "      [OK] Backend is live on http://localhost:$bePort" -ForegroundColor Green
+    } else {
+        Write-Host "      [WARN] Backend is still initializing..." -ForegroundColor Yellow
+    }
 
-    Write-Host "[2/4] Waiting for Backend tunnel URL (30s)..."
-    $beUrl = Get-TunnelUrl "tunnel_be.log" 30
-    if ($beUrl) {
-        Write-Host "[2/4] Backend tunnel: " -NoNewline -ForegroundColor Green
-        Write-Host $beUrl -ForegroundColor Green
-        $beUrl | Out-File "tunnel_be_url.txt" -Encoding ascii
+    # ========== 2. START FRONTEND ==========
+    Write-Host "[2/4] Starting React Frontend (port $fePort)..." -ForegroundColor Cyan
+    $feDir = Join-Path $rootDir "frontend\frontend-react"
+    $feProc = Start-Process -FilePath "cmd.exe" `
+        -ArgumentList "/c npm run dev" `
+        -WorkingDirectory $feDir `
+        -WindowStyle Hidden `
+        -PassThru
+    $script:runningProcesses.Add($feProc)
+
+    if (Wait-Http $fePort 12 "/") {
+        Write-Host "      [OK] Frontend is live on http://localhost:$fePort" -ForegroundColor Green
+    } else {
+        Write-Host "      [WARN] Frontend is still initializing..." -ForegroundColor Yellow
+    }
+
+    # ========== 3. AI DETECTOR ==========
+    Write-Host "[3/4] AI Detector & Stream Dashboard" -ForegroundColor Cyan
+    $startDet = Read-Host "      Start AI Detector now? (Y/N, default: Y)"
+    if ($startDet -eq "Y" -or $startDet -eq "y" -or -not $startDet) {
+        $detProc = Start-Process -FilePath $pyExe `
+            -ArgumentList "detector.py" `
+            -WorkingDirectory $rootDir `
+            -WindowStyle Hidden `
+            -PassThru
+        $script:runningProcesses.Add($detProc)
+        Write-Host "      [OK] AI Detector stream running on port $streamPort" -ForegroundColor Green
+    } else {
+        Write-Host "      [SKIP] AI Detector skipped." -ForegroundColor Gray
+    }
+
+    # ========== 4. CLOUDFLARE TUNNELS (If Mode 1) ==========
+    if ($useCF) {
+        Write-Host ""
+        Write-Host "[4/4] Establishing Cloudflare Secure Tunnels..." -ForegroundColor Cyan
         
-        # Update Flutter app API URL
-        $apiFile = Join-Path $rootDir "frontend\flutter_app\lib\services\api_service.dart"
-        if (Test-Path $apiFile) {
-            $content = Get-Content $apiFile -Raw
-            $newApiUrl = "$beUrl/api"
-            $content = $content -replace "(\s*static const String _baseUrl = ').*(')", "`${1}$newApiUrl`${2}"
-            Set-Content $apiFile $content -NoNewline
-            Write-Host "[2/4] Flutter API URL updated: $newApiUrl" -ForegroundColor Gray
-        }
-        # Update detector.py WebSocket URL
-        $detectorFile = Join-Path $rootDir "detector.py"
-        if (Test-Path $detectorFile) {
-            $content = Get-Content $detectorFile -Raw
-            $wsUrl = $beUrl -replace "^https", "wss"
-            $newWsUrl = "$wsUrl/ws"
-            $content = $content -replace '(SERVER_URL = ")[^"]*(")', "`${1}$newWsUrl`${2}"
-            Set-Content $detectorFile $content -NoNewline
-            Write-Host "[2/4] Detector WS URL updated: $newWsUrl" -ForegroundColor Gray
-        }
-    } else {
-        Write-Host "[2/4] Backend tunnel URL not captured - check the window" -ForegroundColor Yellow
-    }
-    Write-Host ""
+        # Backend Tunnel
+        Start-HiddenTunnel $bePort "Backend" "tunnel_be.log"
+        Write-Host "      Connecting Backend tunnel..." -NoNewline
+        $beUrl = Get-TunnelUrl "tunnel_be.log" 25
+        if ($beUrl) {
+            Write-Host " [OK]" -ForegroundColor Green
+            $beUrl | Out-File "tunnel_be_url.txt" -Encoding ascii
 
-    # ========== 3. START FRONTEND + TUNNEL ==========
-    $feDir = Join-Path $rootDir "frontend\frontend-react"
-    Write-Host "[3/4] Starting frontend dev server on port $fePort..."
-    Start-Process -WindowStyle Normal -FilePath "cmd.exe" -ArgumentList "/c cd /d `"$feDir`" && title Frontend && npm run dev"
-    Write-Host "[3/4] Waiting for frontend (10s)..."
-    if (Wait-Http $fePort 10 "/") { Write-Host "[3/4] Frontend ready!" -ForegroundColor Green }
-    else { Write-Host "[3/4] Frontend may still be starting..." -ForegroundColor Yellow }
-
-    Start-Tunnel $fePort "Frontend" "tunnel_fe.log"
-    Write-Host "[3/4] Waiting for Frontend tunnel URL (30s)..."
-    $feUrl = Get-TunnelUrl "tunnel_fe.log" 30
-    if ($feUrl) {
-        Write-Host "[3/4] Frontend tunnel: " -NoNewline -ForegroundColor Green
-        Write-Host $feUrl -ForegroundColor Green
-        $feUrl | Out-File "tunnel_fe_url.txt" -Encoding ascii
-    } else {
-        Write-Host "[3/4] Frontend tunnel URL not captured - check the window" -ForegroundColor Yellow
-    }
-    Write-Host ""
-
-    # ========== 4. START DETECTOR & STREAM TUNNEL (Raspberry Pi Dashboard) ==========
-    $startDetector = Read-Host "[4/4] Start AI Detector and Raspberry Pi Stream Dashboard? (Y/N)"
-    if ($startDetector -eq "Y" -or $startDetector -eq "y" -or $startDetector -eq "") {
-        Write-Host "[4/4] Starting detector.py on port $streamPort..."
-        Start-Process -WindowStyle Normal -FilePath "cmd.exe" -ArgumentList "/c cd /d `"$rootDir`" && title Detector_Stream && `"$pyExe`" detector.py"
-        Start-Sleep 3
-
-        Start-Tunnel $streamPort "Stream" "tunnel_stream.log"
-        Write-Host "[4/4] Waiting for Pi Stream Dashboard tunnel URL (30s)..."
-        $streamUrl = Get-TunnelUrl "tunnel_stream.log" 30
-        if ($streamUrl) {
-            Write-Host "[4/4] Stream Dashboard tunnel: " -NoNewline -ForegroundColor Green
-            Write-Host $streamUrl -ForegroundColor Green
-            $streamUrl | Out-File "tunnel_stream_url.txt" -Encoding ascii
+            # Update Flutter app API URL
+            $apiFile = Join-Path $rootDir "frontend\flutter_app\lib\services\api_service.dart"
+            if (Test-Path $apiFile) {
+                $content = Get-Content $apiFile -Raw
+                $newApiUrl = "$beUrl/api"
+                $content = $content -replace "(\s*static const String _baseUrl = ').*(')", "`${1}$newApiUrl`${2}"
+                Set-Content $apiFile $content -NoNewline
+            }
+            # Update detector.py WebSocket URL
+            $detectorFile = Join-Path $rootDir "detector.py"
+            if (Test-Path $detectorFile) {
+                $content = Get-Content $detectorFile -Raw
+                $wsUrl = $beUrl -replace "^https", "wss"
+                $newWsUrl = "$wsUrl/ws"
+                $content = $content -replace '(SERVER_URL = ")[^"]*(")', "`${1}$newWsUrl`${2}"
+                Set-Content $detectorFile $content -NoNewline
+            }
         } else {
-            Write-Host "[4/4] Stream tunnel URL not captured - check the window" -ForegroundColor Yellow
+            Write-Host " [FAILED/TIMEOUT]" -ForegroundColor Yellow
+        }
+
+        # Frontend Tunnel
+        Start-HiddenTunnel $fePort "Frontend" "tunnel_fe.log"
+        Write-Host "      Connecting Frontend tunnel..." -NoNewline
+        $feUrl = Get-TunnelUrl "tunnel_fe.log" 25
+        if ($feUrl) {
+            Write-Host " [OK]" -ForegroundColor Green
+            $feUrl | Out-File "tunnel_fe_url.txt" -Encoding ascii
+        } else {
+            Write-Host " [FAILED/TIMEOUT]" -ForegroundColor Yellow
+        }
+
+        # Stream Tunnel (if detector started)
+        if ($startDet -eq "Y" -or $startDet -eq "y" -or -not $startDet) {
+            Start-HiddenTunnel $streamPort "Stream" "tunnel_stream.log"
+            Write-Host "      Connecting Stream tunnel..." -NoNewline
+            $streamUrl = Get-TunnelUrl "tunnel_stream.log" 25
+            if ($streamUrl) {
+                Write-Host " [OK]" -ForegroundColor Green
+                $streamUrl | Out-File "tunnel_stream_url.txt" -Encoding ascii
+            } else {
+                Write-Host " [FAILED/TIMEOUT]" -ForegroundColor Yellow
+            }
         }
     }
+
+    # ========== SYSTEM DASHBOARD SUMMARY ==========
+    $pcIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -ne "Loopback" } | Select-Object -First 1).IPAddress
+    if (-not $pcIp) { $pcIp = "127.0.0.1" }
+
+    Write-Host ""
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host "               VISION-TRAK SYSTEM IS ACTIVE                 " -ForegroundColor Green
+    Write-Host "============================================================" -ForegroundColor Cyan
     Write-Host ""
 
-} else {
-    # ========== LOCAL MODE ==========
-    Write-Host "[BACKEND] Starting backend on port $bePort..."
-    Start-Process -WindowStyle Normal -FilePath "cmd.exe" -ArgumentList "/c cd /d `"$rootDir\backend`" && title Backend && `"$pyExe`" -m uvicorn app.main:app --host 0.0.0.0 --port $bePort --reload --app-dir ."
-    Write-Host "[BACKEND] Waiting (up to 10s)..."
-    if (Wait-Http $bePort 10) { Write-Host "[BACKEND] Ready!" -ForegroundColor Green }
-    else { Write-Host "[BACKEND] May still be starting..." -ForegroundColor Yellow }
-    Write-Host ""
-
-    $feDir = Join-Path $rootDir "frontend\frontend-react"
-    Start-Process -WindowStyle Normal -FilePath "cmd.exe" -ArgumentList "/c cd /d `"$feDir`" && title Frontend && npm run dev"
-
-    $startDet = Read-Host "Start AI Detector and Stream Dashboard? (Y/N)"
-    if ($startDet -eq "Y" -or $startDet -eq "y" -or $startDet -eq "") {
-        Start-Process -WindowStyle Normal -FilePath "cmd.exe" -ArgumentList "/c cd /d `"$rootDir`" && title Detector_Stream && `"$pyExe`" detector.py"
+    if ($useCF) {
+        Write-Host "  [PUBLIC INTERNET URLS] (Cloudflare Tunnels):" -ForegroundColor Yellow
+        if ($feUrl)     { Write-Host "  > Admin & Web Portal   : $feUrl" -ForegroundColor Green }
+        if ($beUrl)     { Write-Host "  > Backend API & Docs   : $beUrl/docs" -ForegroundColor Green }
+        if ($streamUrl) { Write-Host "  > Live Camera Stream   : $streamUrl" -ForegroundColor Green }
+        Write-Host ""
     }
-}
 
-# ========== SUMMARY ==========
-$pcIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -ne "Loopback" } | Select-Object -First 1).IPAddress
-if (-not $pcIp) { $pcIp = "127.0.0.1" }
-
-Write-Host ""
-Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "                   VISION-TRAK SYSTEM SUMMARY               " -ForegroundColor Cyan
-Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host ""
-
-if ($useCF) {
-    if (-not $beUrl -and (Test-Path "tunnel_be_url.txt")) { $beUrl = Get-Content "tunnel_be_url.txt" -First 1 }
-    if (-not $feUrl -and (Test-Path "tunnel_fe_url.txt")) { $feUrl = Get-Content "tunnel_fe_url.txt" -First 1 }
-    if (-not $streamUrl -and (Test-Path "tunnel_stream_url.txt")) { $streamUrl = Get-Content "tunnel_stream_url.txt" -First 1 }
-
-    Write-Host "  [CLOUDFLARE PUBLIC TUNNELS - Access from anywhere]:" -ForegroundColor Yellow
-    if ($feUrl) { Write-Host "  Admin and Official Portal   : $feUrl" -ForegroundColor Green }
-    if ($beUrl) { Write-Host "  Backend API and Docs       : $beUrl/docs" -ForegroundColor Green }
-    if ($streamUrl) { Write-Host "  Raspberry Pi Live Stream   : $streamUrl" -ForegroundColor Green }
+    Write-Host "  [LOCAL NETWORK URLS] (LAN / Localhost):" -ForegroundColor Cyan
+    Write-Host "  > Web Portal (Admin)   : http://localhost:$fePort" -ForegroundColor White
+    Write-Host "  > Backend API & Docs   : http://${pcIp}:${bePort}/docs" -ForegroundColor White
+    Write-Host "  > Live Camera Stream   : http://${pcIp}:${streamPort}/" -ForegroundColor White
+    Write-Host "  > Flutter App Base URL : http://${pcIp}:${bePort}/api" -ForegroundColor White
     Write-Host ""
-    Write-Host "  Keep all tunnel windows open to maintain internet access!" -ForegroundColor Yellow
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host " [INFO] All services running smoothly in the background." -ForegroundColor Gray
+    Write-Host " [INFO] Press [Q] or [Ctrl+C] to stop all services and exit." -ForegroundColor Yellow
+    Write-Host "============================================================" -ForegroundColor Cyan
     Write-Host ""
-}
 
-Write-Host "  [LOCAL NETWORK URLs - Same Wi-Fi / Local PC]:" -ForegroundColor Cyan
-Write-Host "  Admin and Official Portal   : http://localhost:$fePort" -ForegroundColor White
-Write-Host "  Backend API and Docs       : http://${pcIp}:${bePort}/docs" -ForegroundColor White
-Write-Host "  Raspberry Pi Live Stream   : http://${pcIp}:${streamPort}/" -ForegroundColor White
-Write-Host "  Flutter App API Base       : http://${pcIp}:${bePort}/api" -ForegroundColor White
-Write-Host ""
-Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host ""
-pause
+    # Keep terminal alive and listen for Q key
+    while ($true) {
+        if ([System.Console]::KeyAvailable) {
+            $key = [System.Console]::ReadKey($true)
+            if ($key.Key -eq [System.ConsoleKey]::Q) {
+                break
+            }
+        }
+        Start-Sleep -Milliseconds 500
+    }
+
+} finally {
+    Stop-AllServices
+}

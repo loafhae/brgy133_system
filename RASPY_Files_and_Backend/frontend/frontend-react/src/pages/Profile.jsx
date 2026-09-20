@@ -199,23 +199,25 @@ export default function Profile() {
             </Avatar>
 
             <Tooltip title="Upload New Photo">
-              <IconButton
-                component="label"
-                disabled={uploadingPic}
-                sx={{
-                  position: 'absolute',
-                  bottom: -4,
-                  right: -4,
-                  bgcolor: '#990000',
-                  color: '#ffffff',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                  p: 0.8,
-                  '&:hover': { bgcolor: '#730000' },
-                }}
-              >
-                {uploadingPic ? <CircularProgress size={18} sx={{ color: '#ffffff' }} /> : <PhotoCamera sx={{ fontSize: 18 }} />}
-                <input type="file" hidden accept="image/jpeg,image/png,image/webp,image/gif" ref={fileRef} onChange={handlePhotoUpload} />
-              </IconButton>
+              <span>
+                <IconButton
+                  component="label"
+                  disabled={uploadingPic}
+                  sx={{
+                    position: 'absolute',
+                    bottom: -4,
+                    right: -4,
+                    bgcolor: '#990000',
+                    color: '#ffffff',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                    p: 0.8,
+                    '&:hover': { bgcolor: '#730000' },
+                  }}
+                >
+                  {uploadingPic ? <CircularProgress size={18} sx={{ color: '#ffffff' }} /> : <PhotoCamera sx={{ fontSize: 18 }} />}
+                  <input type="file" hidden accept="image/jpeg,image/png,image/webp,image/gif" ref={fileRef} onChange={handlePhotoUpload} />
+                </IconButton>
+              </span>
             </Tooltip>
           </Box>
 
@@ -315,7 +317,7 @@ export default function Profile() {
           <form onSubmit={handleSaveProfile}>
             <Grid container spacing={2.5}>
               {/* Username */}
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -328,7 +330,7 @@ export default function Profile() {
               </Grid>
 
               {/* Email */}
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -342,7 +344,7 @@ export default function Profile() {
               </Grid>
 
               {/* First Name */}
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -354,7 +356,7 @@ export default function Profile() {
               </Grid>
 
               {/* Middle Name */}
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -365,7 +367,7 @@ export default function Profile() {
               </Grid>
 
               {/* Last Name */}
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -377,7 +379,7 @@ export default function Profile() {
               </Grid>
 
               {/* Contact Number */}
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -389,7 +391,7 @@ export default function Profile() {
               </Grid>
 
               {/* Gender */}
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Gender</InputLabel>
                   <Select
@@ -406,7 +408,7 @@ export default function Profile() {
               </Grid>
 
               {/* Birthday */}
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -557,7 +559,7 @@ export default function Profile() {
           <Divider sx={{ mb: 3, borderColor: '#f4f4f5' }} />
 
           <Grid container spacing={3}>
-            <Grid item xs={12} md={5}>
+            <Grid size={{ xs: 12, md: 5 }}>
               <Box sx={{ p: 2.5, borderRadius: 2.5, bgcolor: '#fafafa', border: '1px solid #e4e4e7' }}>
                 <Typography variant="caption" sx={{ color: '#71717a', fontWeight: 700, textTransform: 'uppercase' }}>
                   Primary Account Role
@@ -579,7 +581,7 @@ export default function Profile() {
               </Box>
             </Grid>
 
-            <Grid item xs={12} md={7}>
+            <Grid size={{ xs: 12, md: 7 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#18181b', mb: 2 }}>
                 Granted Capabilities
               </Typography>

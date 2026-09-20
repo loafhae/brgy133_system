@@ -80,7 +80,9 @@ yarn-error.log*
 
 # --- Logs and runtime ---
 *.log
+tunnel_*.log
+tunnel_*_url.txt
+_tunnel_wrapper*.ps1
 .pytest_cache/
 
 # End of .gitignore
-)

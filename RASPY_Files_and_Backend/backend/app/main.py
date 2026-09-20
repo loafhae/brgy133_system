@@ -30,25 +30,32 @@ from app.routers import (
 )
 
 
-def ensure_database_exists():
+def ensure_database_exists(retries=5, delay=1.5):
+    import time
     db_name = settings.DATABASE_NAME
     resolved_port = settings.RESOLVED_PORT
     root_url = (
         f"mysql+pymysql://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}"
         f"@{settings.DATABASE_HOST}:{resolved_port}/mysql"
     )
-    temp_engine = create_engine(root_url, pool_pre_ping=True)
-    try:
-        with temp_engine.connect() as conn:
-            conn.execute(text(f"CREATE DATABASE IF NOT EXISTS `{db_name}`"))
-            conn.commit()
-            print(f"[OK] Database '{db_name}' is ready on port {resolved_port}.")
-    except Exception as e:
-        print(f"[ERROR] Could not auto-create database: {e}")
-        print(f"[INFO] Make sure XAMPP MariaDB is running on port {resolved_port} (or check standard ports 3306/3307/3308).")
-        raise SystemExit(1)
-    finally:
-        temp_engine.dispose()
+    for attempt in range(1, retries + 1):
+        temp_engine = create_engine(root_url, pool_pre_ping=True)
+        try:
+            with temp_engine.connect() as conn:
+                conn.execute(text(f"CREATE DATABASE IF NOT EXISTS `{db_name}`"))
+                conn.commit()
+                print(f"[OK] Database '{db_name}' is ready on port {resolved_port}.")
+                return True
+        except Exception as e:
+            if attempt < retries:
+                time.sleep(delay)
+            else:
+                print(f"[ERROR] Could not auto-create/connect to database: {e}")
+                print(f"[INFO] Make sure XAMPP MariaDB is running on port {resolved_port} (or check standard ports 3306/3307/3308).")
+                return False
+        finally:
+            temp_engine.dispose()
+    return False
 
 
 def seed_default_data():
@@ -73,8 +80,15 @@ def seed_default_data():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    ensure_database_exists()
-    Base.metadata.create_all(bind=engine)
+    db_ok = ensure_database_exists()
+    if db_ok:
+        try:
+            Base.metadata.create_all(bind=engine)
+            seed_default_data()
+        except Exception as e:
+            print(f"[WARNING] Database schema generation error: {e}")
+    else:
+        print("[WARNING] FastAPI running in degraded mode - MariaDB is not yet accessible.")
 
     # Initialize Firebase Admin SDK
     try:
