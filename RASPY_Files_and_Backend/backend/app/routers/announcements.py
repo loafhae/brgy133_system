@@ -34,6 +34,20 @@ def list_announcements(
     return announcements
 
 
+@router.get("/public", response_model=list[AnnouncementResponse])
+def list_public_announcements(
+    search: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    query = db.query(Announcement).filter(Announcement.is_published == True)
+    if search:
+        query = query.filter(Announcement.title.ilike(f"%{search}%"))
+    announcements = query.order_by(Announcement.date_posted.desc()).offset((page - 1) * limit).limit(limit).all()
+    return announcements
+
+
 @router.get("/{announcement_id}", response_model=AnnouncementResponse)
 def get_announcement(
     announcement_id: int,

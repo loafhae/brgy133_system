@@ -25,6 +25,12 @@ class ProfileUpdateRequest(BaseModel):
     last_name: Optional[str] = None
     contact: Optional[str] = None
     email: Optional[EmailStr] = None
+    gender: Optional[str] = None
+    birthday: Optional[str] = None
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 class RegisterRequest(BaseModel):
     username: str
@@ -81,11 +87,14 @@ def _build_user_response(current_user: User):
     profile_data = None
     sub = getattr(current_user, "admin_profile", None) or getattr(current_user, "official_profile", None) or getattr(current_user, "resident_profile", None)
     if sub:
+        bday_val = getattr(sub, "birthday", None)
         profile_data = {
             "first_name": getattr(sub, "first_name", "") or "",
             "middle_name": getattr(sub, "middle_name", "") or "",
             "last_name": getattr(sub, "last_name", "") or "",
             "contact": getattr(sub, "contact", "") or "",
+            "gender": getattr(sub, "gender", "") or "",
+            "birthday": str(bday_val) if bday_val else "",
         }
 
     return {
@@ -95,6 +104,7 @@ def _build_user_response(current_user: User):
         "role": current_user.roles,
         "profile_pic": getattr(current_user, "profile_pic", None),
         "must_change_password": getattr(current_user, "must_change_password", False),
+        "created_at": str(current_user.created_at) if getattr(current_user, "created_at", None) else None,
         "profile": profile_data
     }
 
@@ -162,6 +172,13 @@ def update_profile(
             raise HTTPException(status_code=400, detail="Email already registered to another account.")
         current_user.email = body.email
 
+    bday_date = None
+    if body.birthday:
+        try:
+            bday_date = datetime.strptime(body.birthday, "%Y-%m-%d").date()
+        except Exception:
+            pass
+
     # Update associated role profile
     role = str(current_user.roles).lower()
     if "super_admin" in role or "admin" in role:
@@ -177,6 +194,10 @@ def update_profile(
             profile.last_name = body.last_name
         if body.contact is not None:
             profile.contact = body.contact
+        if body.gender is not None:
+            profile.gender = body.gender
+        if body.birthday is not None:
+            profile.birthday = bday_date
 
     elif "official" in role:
         profile = current_user.official_profile
@@ -191,6 +212,10 @@ def update_profile(
             profile.last_name = body.last_name
         if body.contact is not None:
             profile.contact = body.contact
+        if body.gender is not None:
+            profile.gender = body.gender
+        if body.birthday is not None:
+            profile.birthday = bday_date
 
     else:
         profile = current_user.resident_profile
@@ -205,10 +230,31 @@ def update_profile(
             profile.last_name = body.last_name
         if body.contact is not None:
             profile.contact = body.contact
+        if body.gender is not None:
+            profile.gender = body.gender
+        if body.birthday is not None:
+            profile.birthday = bday_date
 
     db.commit()
     db.refresh(current_user)
     return _build_user_response(current_user)
+
+@router.post("/change-password")
+def change_password(
+    body: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not verify_password(body.current_password, current_user.password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect.")
+        
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters.")
+        
+    current_user.password = hash_password(body.new_password)
+    current_user.must_change_password = False
+    db.commit()
+    return {"message": "Password updated successfully."}
 
 @router.post("/register")
 def register(body: RegisterRequest, db: Session = Depends(get_db)):
