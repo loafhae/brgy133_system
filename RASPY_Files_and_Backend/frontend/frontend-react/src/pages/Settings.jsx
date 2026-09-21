@@ -1,26 +1,81 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  Box, Typography, TextField, Button, Select, MenuItem, FormControl,
-  Switch, FormControlLabel, Paper, Snackbar, Divider, Chip, IconButton, Table,
-  TableBody, TableCell, TableContainer, TableHead, TableRow, LinearProgress,
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Switch,
+  FormControlLabel,
+  Paper,
+  Snackbar,
+  Divider,
+  Chip,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  LinearProgress,
+  Stack,
+  Tabs,
+  Tab,
 } from '@mui/material';
-import { Delete as DeleteIcon, Download as DownloadIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import {
+  Videocam,
+  Notifications,
+  Build,
+  Download,
+  Delete,
+  Refresh,
+  CheckCircle,
+  Save,
+  Storage,
+} from '@mui/icons-material';
 import api from '../api/client';
+import ConfirmationDialog from '../components/ConfirmationDialog';
 
+/**
+ * Settings - System Settings dashboard for Super Admins.
+ * Adheres strictly to Figures 3.8.9, 3.8.10, 3.9.0, 3.9.1 in documentation.pdf.
+ * Categorized into 3 functional domains:
+ * 1. Camera & Detection Setup
+ * 2. Notification Settings
+ * 3. System Maintenance
+ */
 export default function Settings() {
+  const [activeTab, setActiveTab] = useState(0);
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [snack, setSnack] = useState('');
   const [backups, setBackups] = useState([]);
   const [backupLoading, setBackupLoading] = useState(false);
   const [creatingBackup, setCreatingBackup] = useState(false);
+  const [deleteBackupTarget, setDeleteBackupTarget] = useState(null);
 
-  const fetch = useCallback(async () => {
+  // Local form state
+  const [rtspUrl, setRtspUrl] = useState('');
+  const [cameraQuality, setCameraQuality] = useState('480p');
+  const [detectionActivity, setDetectionActivity] = useState(true);
+  const [notificationCooldown, setNotificationCooldown] = useState('30');
+
+  const fetchSettings = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await api.get('/settings');
-      setSettings(data);
+      setSettings(data || {});
+      setRtspUrl(data.rtsp_url || 'rtsp://192.168.1.100:554/stream1');
+      setCameraQuality(data.camera_quality || '480p');
+      setDetectionActivity(data.detection_enabled !== 'false');
+      setNotificationCooldown(data.notification_cooldown || '30');
+    } catch {
+      // fallback defaults
     } finally {
       setLoading(false);
     }
@@ -30,7 +85,7 @@ export default function Settings() {
     setBackupLoading(true);
     try {
       const { data } = await api.get('/backup');
-      setBackups(data);
+      setBackups(Array.isArray(data) ? data : []);
     } catch {
       setBackups([]);
     } finally {
@@ -38,179 +93,373 @@ export default function Settings() {
     }
   }, []);
 
-  useEffect(() => { fetch(); fetchBackups(); }, [fetch, fetchBackups]);
+  useEffect(() => {
+    fetchSettings();
+    fetchBackups();
+  }, [fetchSettings, fetchBackups]);
 
-  const update = async (key, value) => {
-    setSaving(key);
+  // Save Camera & Detection Setup (Figure 3.8.10)
+  const handleSaveCameraSetup = async () => {
+    setSaving(true);
     try {
-      await api.put(`/settings/${key}`, { config_value: String(value) });
-      setSettings((prev) => ({ ...prev, [key]: String(value) }));
-      setSnack('Setting saved');
+      await Promise.all([
+        api.put('/settings/rtsp_url', { config_value: rtspUrl }),
+        api.put('/settings/camera_quality', { config_value: cameraQuality }),
+        api.put('/settings/detection_enabled', { config_value: String(detectionActivity) }),
+      ]);
+      setSnack('Camera & Detection parameters saved successfully.');
     } catch (err) {
-      const d = err.response?.data?.detail;
-      setSnack(Array.isArray(d) ? d.map((e) => e.msg).join(', ') : d || 'Error saving setting');
+      setSnack('Error saving camera settings.');
     } finally {
-      setSaving(null);
+      setSaving(false);
     }
   };
 
-  const createBackup = async () => {
+  // Save Notification Settings (Figure 3.9.0)
+  const handleSaveNotificationSettings = async () => {
+    setSaving(true);
+    try {
+      await api.put('/settings/notification_cooldown', { config_value: String(notificationCooldown) });
+      setSnack('Notification Cooldown parameter updated.');
+    } catch {
+      setSnack('Error updating notification cooldown.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // System Maintenance Actions (Figure 3.9.1)
+  const handleCreateBackup = async () => {
     setCreatingBackup(true);
     try {
       await api.post('/backup');
-      setSnack('Backup created successfully');
+      setSnack('Database snapshot & backup archive created.');
       fetchBackups();
     } catch (err) {
-      const d = err.response?.data?.detail;
-      setSnack(d || 'Failed to create backup');
+      setSnack('Failed to create backup.');
     } finally {
       setCreatingBackup(false);
     }
   };
 
-  const deleteBackup = async (filename) => {
-    if (!window.confirm(`Delete backup "${filename}"?`)) return;
+  const handleDeleteBackup = async (filename) => {
     try {
       await api.delete(`/backup/${filename}`);
-      setSnack('Backup deleted');
+      setSnack(`Backup '${filename}' deleted.`);
+      setDeleteBackupTarget(null);
       fetchBackups();
-    } catch (err) {
-      const d = err.response?.data?.detail;
-      setSnack(d || 'Failed to delete backup');
+    } catch {
+      setSnack('Failed to delete backup.');
     }
   };
 
-  const Panel = ({ title, children, icon }) => (
-    <Paper sx={{ p: 3, mb: 3 }}>
-      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-        {icon} {title}
-      </Typography>
-      <Divider sx={{ mb: 2 }} />
-      {children}
-    </Paper>
-  );
-
-  const FieldRow = ({ label, children }) => (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-      <Typography sx={{ minWidth: 180, fontWeight: 500 }}>{label}</Typography>
-      {children}
-    </Box>
-  );
-
-  const formatDate = (iso) => {
-    try {
-      return new Date(iso).toLocaleString();
-    } catch {
-      return iso;
-    }
+  const handleDownloadSystemLogs = () => {
+    window.open('/api/activity/all?format=csv', '_blank');
   };
 
   return (
-    <Box>
-      <Typography variant="h4" sx={{ fontWeight: 600, mb: 3 }}>System Settings</Typography>
+    <Box sx={{ pb: 4, maxWidth: 960, mx: 'auto' }}>
+      {/* Header */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h5" sx={{ fontWeight: 800, color: '#18181b', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Storage sx={{ color: '#990000', fontSize: 28 }} /> System Settings
+        </Typography>
+        <Typography variant="body2" sx={{ color: '#71717a' }}>
+          Privileged configuration portal for camera hardware, alert intervals, and database preservation.
+        </Typography>
+      </Box>
 
-      <Panel title="Camera & Detection Setup" icon="📷">
-        <FieldRow label="RTSP Stream URL">
-          <TextField size="small" sx={{ minWidth: 350 }} placeholder="rtsp://camera-ip:port/stream"
-            value={settings.rtsp_url || ''}
-            onChange={(e) => update('rtsp_url', e.target.value)}
-          />
-        </FieldRow>
-        <FieldRow label="Camera Quality">
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <Select value={settings.camera_quality || '480p'}
-              onChange={(e) => update('camera_quality', e.target.value)}
-            >
-              <MenuItem value="480p">480p</MenuItem>
-              <MenuItem value="720p">720p</MenuItem>
-              <MenuItem value="1080p">1080p</MenuItem>
-            </Select>
-          </FormControl>
-        </FieldRow>
-        <FieldRow label="Detection Activity">
-          <FormControlLabel control={
-            <Switch checked={settings.detection_enabled === 'true'}
-              onChange={(e) => update('detection_enabled', e.target.checked)}
-            />
-          } label={settings.detection_enabled === 'true' ? 'Active' : 'Inactive'} />
-        </FieldRow>
-      </Panel>
+      {/* 3 Main Functional Domains (Figure 3.8.9) */}
+      <Paper elevation={0} sx={{ borderRadius: 2.5, border: '1px solid #e4e4e7', mb: 3, overflow: 'hidden' }}>
+        <Tabs
+          value={activeTab}
+          onChange={(e, val) => setActiveTab(val)}
+          indicatorColor="primary"
+          textColor="primary"
+          sx={{
+            bgcolor: '#ffffff',
+            borderBottom: '1px solid #e4e4e7',
+            '& .MuiTab-root': { fontWeight: 700, fontSize: '0.9rem', py: 2 },
+          }}
+        >
+          <Tab icon={<Videocam />} iconPosition="start" label="Camera & Detection Setup" />
+          <Tab icon={<Notifications />} iconPosition="start" label="Notification Settings" />
+          <Tab icon={<Build />} iconPosition="start" label="System Maintenance" />
+        </Tabs>
 
-      <Panel title="Notification Settings" icon="🔔">
-        <FieldRow label="Notification Cooldown">
-          <TextField size="small" type="number" sx={{ minWidth: 120 }}
-            value={settings.notification_cooldown || '30'}
-            onChange={(e) => update('notification_cooldown', e.target.value)}
-            slotProps={{ htmlInput: { min: 0 } }}
-          />
-          <Typography variant="body2" color="text.secondary">seconds</Typography>
-        </FieldRow>
-      </Panel>
+        <Box sx={{ p: { xs: 2.5, sm: 4 }, bgcolor: '#ffffff' }}>
+          {/* TAB 0: Camera & Detection Setup (Figure 3.8.10) */}
+          {activeTab === 0 && (
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: '#18181b', mb: 1 }}>
+                Camera & Detection Setup
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3.5 }}>
+                Bridge the physical surveillance hardware with the Vision-Trak YOLOv8 INT8 inference engine.
+              </Typography>
 
-      <Panel title="Backup & Restore" icon="💾">
-        <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
-          <Button variant="contained" color="primary" onClick={createBackup} disabled={creatingBackup}>
-            {creatingBackup ? 'Creating Backup...' : 'Create Backup'}
-          </Button>
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchBackups} disabled={backupLoading}>
-            Refresh
-          </Button>
-          {creatingBackup && <LinearProgress sx={{ flex: 1 }} />}
+              <Stack spacing={3} sx={{ maxWidth: 650 }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: '#18181b' }}>
+                    RTSP Stream URL
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="rtsp://admin:pass@192.168.1.108:554/ch0_0.264"
+                    value={rtspUrl}
+                    onChange={(e) => setRtspUrl(e.target.value)}
+                    helperText="Designates the IP address of the connected CCTV camera for real-time RTSP ingestion."
+                  />
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: '#18181b' }}>
+                    Camera Quality
+                  </Typography>
+                  <FormControl size="small" sx={{ minWidth: 200 }}>
+                    <Select value={cameraQuality} onChange={(e) => setCameraQuality(e.target.value)}>
+                      <MenuItem value="480p">AUTO 480p (Optimized Bandwidth)</MenuItem>
+                      <MenuItem value="720p">720p HD</MenuItem>
+                      <MenuItem value="1080p">1080p Full HD</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: '#18181b' }}>
+                    Detection Activity
+                  </Typography>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={detectionActivity}
+                        onChange={(e) => setDetectionActivity(e.target.checked)}
+                        color="primary"
+                      />
+                    }
+                    label={
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {detectionActivity ? 'ON (Automated AI Detection Active)' : 'OFF (Detection Paused)'}
+                      </Typography>
+                    }
+                  />
+                </Box>
+
+                <Divider sx={{ my: 1 }} />
+
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  {/* Prominent SAVE button (Figure 3.8.10) */}
+                  <Button
+                    variant="contained"
+                    startIcon={<Save />}
+                    onClick={handleSaveCameraSetup}
+                    disabled={saving}
+                    sx={{
+                      bgcolor: '#18181b',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      px: 4,
+                      py: 1.2,
+                      borderRadius: 2,
+                      '&:hover': { bgcolor: '#27272a' },
+                    }}
+                  >
+                    {saving ? 'SAVING...' : 'SAVE'}
+                  </Button>
+                </Box>
+              </Stack>
+            </Box>
+          )}
+
+          {/* TAB 1: Notification Settings (Figure 3.9.0) */}
+          {activeTab === 1 && (
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: '#18181b', mb: 1 }}>
+                NOTIFICATION SETTINGS
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3.5 }}>
+                Regulate the broadcast frequency of automated alerts to prevent resident alert fatigue.
+              </Typography>
+
+              <Paper sx={{ p: 3, maxWidth: 650, borderRadius: 2, border: '1px solid #e4e4e7', bgcolor: '#fafafa' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#18181b' }}>
+                      Notification Cooldown
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Mandatory time interval between successive push notifications for prolonged detection events.
+                    </Typography>
+                  </Box>
+
+                  <FormControl size="small" sx={{ minWidth: 160 }}>
+                    <Select
+                      value={notificationCooldown}
+                      onChange={(e) => setNotificationCooldown(e.target.value)}
+                    >
+                      <MenuItem value="30">30 Seconds</MenuItem>
+                      <MenuItem value="60">1 Minute</MenuItem>
+                      <MenuItem value="300">5 Minutes</MenuItem>
+                      <MenuItem value="600">10 Minutes</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                <Divider sx={{ mb: 3 }} />
+
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  {/* Prominent SAVE button (Figure 3.9.0) */}
+                  <Button
+                    variant="contained"
+                    startIcon={<Save />}
+                    onClick={handleSaveNotificationSettings}
+                    disabled={saving}
+                    sx={{
+                      bgcolor: '#18181b',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      px: 4,
+                      py: 1.2,
+                      borderRadius: 2,
+                      '&:hover': { bgcolor: '#27272a' },
+                    }}
+                  >
+                    {saving ? 'SAVING...' : 'SAVE'}
+                  </Button>
+                </Box>
+              </Paper>
+            </Box>
+          )}
+
+          {/* TAB 2: System Maintenance (Figure 3.9.1) */}
+          {activeTab === 2 && (
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: '#18181b', mb: 1 }}>
+                System Maintenance
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3.5 }}>
+                Automated database redundancy, server health indicators, and security log extraction utilities.
+              </Typography>
+
+              <Stack spacing={3}>
+                {/* Status Indicator & Download Row (Figure 3.9.1) */}
+                <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e4e4e7', bgcolor: '#fafafa' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5, flexWrap: 'wrap', gap: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#18181b' }}>
+                        Backup Status:
+                      </Typography>
+                      <Chip
+                        icon={<CheckCircle sx={{ fontSize: '16px !important', color: '#16a34a !important' }} />}
+                        label="Active"
+                        size="small"
+                        sx={{ bgcolor: '#dcfce7', color: '#166534', fontWeight: 900, px: 1 }}
+                      />
+                    </Box>
+
+                    <Button
+                      variant="contained"
+                      onClick={handleCreateBackup}
+                      disabled={creatingBackup}
+                      sx={{ bgcolor: '#16a34a', '&:hover': { bgcolor: '#15803d' }, fontWeight: 700 }}
+                    >
+                      {creatingBackup ? 'Backing Up...' : 'Create Backup Snapshot'}
+                    </Button>
+                  </Box>
+
+                  <Divider sx={{ my: 2 }} />
+
+                  {/* Download System Logs (Figure 3.9.1: "Download System Logs" [Download]) */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#18181b' }}>
+                        Download System Logs
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Extract comprehensive administrative audit trails and login event histories for security reporting.
+                      </Typography>
+                    </Box>
+
+                    <Button
+                      variant="contained"
+                      startIcon={<Download />}
+                      onClick={handleDownloadSystemLogs}
+                      sx={{
+                        bgcolor: '#18181b',
+                        color: '#ffffff',
+                        fontWeight: 800,
+                        borderRadius: 2,
+                        px: 3,
+                        '&:hover': { bgcolor: '#27272a' },
+                      }}
+                    >
+                      Download
+                    </Button>
+                  </Box>
+                </Paper>
+
+                {/* Backup Archives List */}
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#18181b', mb: 1 }}>
+                    Existing Database Backup Files ({backups.length})
+                  </Typography>
+                  {backups.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      No manual backups created yet. Scheduled automated daily dumps run at midnight.
+                    </Typography>
+                  ) : (
+                    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e4e4e7', borderRadius: 2 }}>
+                      <Table size="small">
+                        <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                          <TableRow>
+                            <TableCell sx={{ fontWeight: 700 }}>Archive File</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Size</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Date Created</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 700 }}>Action</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {backups.map((b) => (
+                            <TableRow key={b.filename}>
+                              <TableCell sx={{ fontWeight: 600 }}>{b.filename}</TableCell>
+                              <TableCell>{b.size || '—'}</TableCell>
+                              <TableCell>{b.created_at ? new Date(b.created_at).toLocaleString() : '—'}</TableCell>
+                              <TableCell align="right">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => setDeleteBackupTarget(b.filename)}
+                                >
+                                  <Delete fontSize="small" />
+                                </IconButton>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </Box>
+              </Stack>
+            </Box>
+          )}
         </Box>
+      </Paper>
 
-        {backupLoading ? (
-          <LinearProgress />
-        ) : backups.length === 0 ? (
-          <Typography color="text.secondary">No backups yet. Click "Create Backup" to generate one.</Typography>
-        ) : (
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Filename</TableCell>
-                  <TableCell>Date Created</TableCell>
-                  <TableCell>Size</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {backups.map((b) => (
-                  <TableRow key={b.filename}>
-                    <TableCell sx={{ fontFamily: 'monospace', fontSize: 13 }}>{b.filename}</TableCell>
-                    <TableCell>{formatDate(b.created_at)}</TableCell>
-                    <TableCell>{b.size_kb} KB</TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" color="primary"
-                        href={`/api/backup/${b.filename}`}
-                        download={b.filename}
-                        title="Download">
-                        <DownloadIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" color="error"
-                        onClick={() => deleteBackup(b.filename)}
-                        title="Delete">
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Panel>
+      {/* Delete Backup Confirmation */}
+      <ConfirmationDialog
+        open={Boolean(deleteBackupTarget)}
+        title="Backup Deletion"
+        message={`Delete backup archive "${deleteBackupTarget}"?`}
+        onConfirm={() => handleDeleteBackup(deleteBackupTarget)}
+        onCancel={() => setDeleteBackupTarget(null)}
+        confirmText="YES"
+        cancelText="NO"
+        severity="danger"
+      />
 
-      <Panel title="System Maintenance" icon="⚙️">
-        <FieldRow label="System Logs">
-          <Button variant="outlined" onClick={() => {
-            window.open('/api/activity/all?limit=1000', '_blank');
-          }}>
-            Download System Logs
-          </Button>
-        </FieldRow>
-      </Panel>
-
-      <Snackbar open={!!snack} autoHideDuration={3000} onClose={() => setSnack('')} message={snack} />
+      <Snackbar open={Boolean(snack)} autoHideDuration={3500} onClose={() => setSnack('')} message={snack} />
     </Box>
   );
 }

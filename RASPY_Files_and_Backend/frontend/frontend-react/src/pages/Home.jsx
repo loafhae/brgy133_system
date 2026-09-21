@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import {
   LocalShipping, Campaign, Feedback as FeedbackIcon,
-  Login as LoginIcon, CheckCircle, Videocam, ArrowForward,
+  CheckCircle, Videocam, ArrowForward,
   AccessTime, Refresh, Smartphone,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
@@ -67,21 +67,6 @@ export default function Home() {
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#fafafa', color: '#18181b' }}>
-      {/* Top GovPH Strip */}
-      <Box sx={{ bgcolor: '#730000', color: '#ffffff', py: 0.75, px: 2, fontSize: '0.75rem', borderBottom: '1px solid #5a0000' }}>
-        <Container maxWidth="lg" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: 0.5 }}>
-            BARANGAY 133, TONDO, MANILA
-          </Typography>
-          <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.5 }}>
-            <AccessTime sx={{ fontSize: 13, color: '#fde047' }} />
-            <Typography variant="caption" sx={{ fontWeight: 600 }}>
-              PST: {pstTime || 'Loading...'}
-            </Typography>
-          </Box>
-        </Container>
-      </Box>
-
       {/* Main Navbar */}
       <Box
         component="header"
@@ -117,21 +102,50 @@ export default function Home() {
             </Box>
           </Box>
 
-          <Button
-            variant="contained"
-            onClick={() => navigate(user ? '/dashboard' : '/login')}
-            startIcon={<LoginIcon fontSize="small" />}
+          {/* Philippine Standard Time Display (Moved from top bar to replace redundant navbar login) */}
+          <Box
             sx={{
-              bgcolor: '#990000',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              px: 2.5,
-              py: 1,
-              '&:hover': { bgcolor: '#730000' },
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              bgcolor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: 2,
+              px: { xs: 1.5, sm: 2 },
+              py: 0.75,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
             }}
           >
-            {user ? 'Open Dashboard' : 'Official Portal Login'}
-          </Button>
+            <AccessTime sx={{ color: '#990000', fontSize: { xs: 18, sm: 20 } }} />
+            <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  display: 'block',
+                  color: '#71717a',
+                  fontWeight: 700,
+                  fontSize: '0.65rem',
+                  letterSpacing: 0.5,
+                  textTransform: 'uppercase',
+                  lineHeight: 1.1,
+                }}
+              >
+                Philippine Standard Time
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: '#990000',
+                  fontWeight: 700,
+                  fontSize: { xs: '0.75rem', sm: '0.85rem' },
+                  fontVariantNumeric: 'tabular-nums',
+                  lineHeight: 1.2,
+                }}
+              >
+                {pstTime || 'Loading...'}
+              </Typography>
+            </Box>
+          </Box>
         </Container>
       </Box>
 

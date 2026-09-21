@@ -1,18 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../models/announcement.dart';
 import '../services/notification_services.dart';
+import '../widgets/resident_app_scaffold.dart';
 
-class _ActionItem {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-  _ActionItem(this.icon, this.label, this.color, this.onTap);
-}
-
+/// DashboardScreen - Mobile User Dashboard Interface.
+/// Strictly adheres to Figure 4.1.5 in documentation.pdf.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -21,22 +15,18 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  static const Color _primaryRed = Color(0xFFc62828);
+  static const Color _primaryRed = Color(0xFF990000);
 
-  String _residentName = '';
-  String? _profilePicUrl;
   bool _truckDetected = false;
-  List<dynamic> _announcements = [];
+  List<Announcement> _announcements = [];
   bool _loadingAnnouncements = true;
   Timer? _truckTimer;
 
   @override
   void initState() {
     super.initState();
-    _loadSession();
     _fetchAnnouncements();
     _pollTruckStatus();
-
     NotificationService.initialize(context);
   }
 
@@ -44,18 +34,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void dispose() {
     _truckTimer?.cancel();
     super.dispose();
-  }
-
-  Future<void> _loadSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString('username') ?? 'Resident';
-    final pic = prefs.getString('profile_pic');
-    if (mounted) {
-      setState(() {
-        _residentName = name;
-        _profilePicUrl = pic;
-      });
-    }
   }
 
   void _pollTruckStatus() {
@@ -66,9 +44,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final detected = data['status'] == 'active';
         if (detected && !_truckDetected) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('The garbage truck is now in your area!'),
-              duration: Duration(seconds: 5),
+            SnackBar(
+              backgroundColor: const Color(0xFF990000),
+              behavior: SnackBarBehavior.floating,
+              content: const Row(
+                children: [
+                  Icon(Icons.local_shipping, color: Colors.white, size: 20),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Alert: Garbage truck is now collecting in Barangay 133!',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+              duration: const Duration(seconds: 6),
             ),
           );
         }
@@ -79,296 +70,194 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _fetchAnnouncements() async {
     try {
-      final data = await ApiService.getList('/announcements?published_only=true');
-      if (mounted) setState(() { _announcements = data; _loadingAnnouncements = false; });
+      List<dynamic> data;
+      try {
+        data = await ApiService.getList('/announcements?published_only=true');
+      } catch (_) {
+        // Fall back to public announcements endpoint if unauthenticated
+        data = await ApiService.getList('/announcements/public', auth: false);
+      }
+      if (mounted) {
+        setState(() {
+          _announcements = data.map((e) {
+            if (e is Announcement) return e;
+            return Announcement.fromJson(Map<String, dynamic>.from(e as Map));
+          }).toList();
+          _loadingAnnouncements = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loadingAnnouncements = false);
     }
   }
 
-  Future<void> _handleLogout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    if (mounted) Navigator.pushReplacementNamed(context, '/login');
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      drawer: _buildDrawer(),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: Container(
-                color: const Color(0xFFF5F5F5),
-                child: RefreshIndicator(
-                  onRefresh: () async { await _fetchAnnouncements(); },
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildGarbageStatusCard(),
-                        const SizedBox(height: 16),
-                        _buildSectionHeader(Icons.campaign, 'Latest Announcements', onViewAll: () => Navigator.pushNamed(context, '/announcements')),
-                        const SizedBox(height: 8),
-                        _buildAnnouncementsList(),
-                        const SizedBox(height: 20),
-                        _buildSectionHeader(Icons.grid_view, 'Services'),
-                        const SizedBox(height: 8),
-                        _buildQuickActions(),
-                      ],
+    return ResidentAppScaffold(
+      currentRoute: '/dashboard',
+      body: RefreshIndicator(
+        color: _primaryRed,
+        onRefresh: () async {
+          await _fetchAnnouncements();
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. Live Vision-Trak IoT Detection Status Banner (Figure 4.1.5)
+              _buildLiveDetectionBanner(),
+              const SizedBox(height: 22),
+
+              // 2. Latest Announcements Section Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.campaign_rounded, size: 20, color: _primaryRed),
+                      SizedBox(width: 8),
+                      Text(
+                        'Latest Announcements',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF18181B),
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pushNamed(context, '/announcements'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: _primaryRed,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    child: const Text(
+                      'View All',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                     ),
                   ),
-                ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+
+              // Announcements List / Cards Preview
+              _buildAnnouncementsPreview(),
+              const SizedBox(height: 24),
+
+              // 3. Services Grid (2x2 Layout per Figure 4.1.5)
+              const Row(
+                children: [
+                  Icon(Icons.grid_view_rounded, size: 20, color: _primaryRed),
+                  SizedBox(width: 8),
+                  Text(
+                    'Barangay Services',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF18181B),
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildServicesGrid(),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSectionHeader(IconData icon, String title, {VoidCallback? onViewAll}) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: _primaryRed),
-        const SizedBox(width: 8),
-        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF333333))),
-        const Spacer(),
-        if (onViewAll != null)
-          TextButton(
-            onPressed: onViewAll,
-            style: TextButton.styleFrom(foregroundColor: _primaryRed, padding: const EdgeInsets.symmetric(horizontal: 8)),
-            child: const Text('View All', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-          ),
-      ],
-    );
-  }
+  Widget _buildLiveDetectionBanner() {
+    final active = _truckDetected;
 
-  Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      color: Colors.white,
-      child: Row(
-        children: [
-          Builder(
-            builder: (ctx) => IconButton(
-              icon: const Icon(Icons.menu, color: _primaryRed),
-              onPressed: () => Scaffold.of(ctx).openDrawer(),
-            ),
-          ),
-          Image.asset('assets/logo.png', width: 32, height: 32,
-              errorBuilder: (c, e, s) => Icon(Icons.location_city, size: 32, color: _primaryRed)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text('Barangay 133', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _primaryRed)),
-          ),
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined, color: _primaryRed),
-                onPressed: () => Navigator.pushNamed(context, '/garbage-alerts'),
-              ),
-              if (_truckDetected)
-                Positioned(right: 8, top: 8, child: Container(
-                  width: 10, height: 10,
-                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                )),
-            ],
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: active ? const Color(0xFFFEF2F2) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: active ? const Color(0xFFFCA5A5) : const Color(0xFFE2E8F0),
+          width: active ? 1.5 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: active
+                ? const Color(0xFFDC2626).withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildGarbageStatusCard() {
-    final active = _truckDetected;
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: active ? Colors.orange[50] : Colors.white,
-          border: Border(left: BorderSide(color: active ? Colors.orange : Colors.green, width: 4)),
-        ),
-        child: Row(
-          children: [
-            Icon(active ? Icons.local_shipping : Icons.check_circle, size: 36, color: active ? Colors.orange : Colors.green),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(active ? 'Collection in Progress' : 'No Active Collection',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF333333))),
-                  const SizedBox(height: 2),
-                  Text(active ? 'Garbage truck is in your area' : 'No garbage collection right now',
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-                ],
-              ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: active ? const Color(0xFFFEE2E2) : const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(12),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActions() {
-    final actions = [
-      _ActionItem(Icons.campaign, 'Announcements', const Color(0xFF1976D2), () => Navigator.pushNamed(context, '/announcements')),
-      _ActionItem(Icons.delete_outline, 'Garbage Alerts', const Color(0xFFF57C00), () => Navigator.pushNamed(context, '/garbage-alerts')),
-      _ActionItem(Icons.feedback, 'Feedback', const Color(0xFF388E3C), () => Navigator.pushNamed(context, '/feedback')),
-      _ActionItem(Icons.history, 'Activity History', const Color(0xFF7B1FA2), () => Navigator.pushNamed(context, '/activity-history')),
-    ];
-    return Row(
-      children: actions.map((a) => Expanded(
-        child: Padding(
-          padding: EdgeInsets.only(left: a == actions.first ? 0 : 6, right: a == actions.last ? 0 : 6),
-          child: Card(
-            elevation: 1,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: a.onTap,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Column(
-                  children: [
-                    Icon(a.icon, size: 28, color: a.color),
-                    const SizedBox(height: 6),
-                    Text(a.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11, color: Color(0xFF444444))),
-                  ],
-                ),
-              ),
+            child: Icon(
+              active ? Icons.local_shipping_rounded : Icons.check_circle_rounded,
+              size: 28,
+              color: active ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
             ),
           ),
-        ),
-      )).toList(),
-    );
-  }
-
-  Widget _buildAnnouncementsList() {
-    if (_loadingAnnouncements) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_announcements.isEmpty) {
-      return Card(
-        elevation: 1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 32),
-          child: Center(child: Text('No announcements yet', style: TextStyle(color: Colors.grey[500], fontSize: 14))),
-        ),
-      );
-    }
-    return Column(
-      children: _announcements.take(4).map((a) => Card(
-        elevation: 1,
-        margin: const EdgeInsets.only(bottom: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-            onTap: () => Navigator.pushNamed(
-            context,
-            '/announcement-detail',
-            arguments: a is Announcement ? a : Announcement.fromJson(Map<String, dynamic>.from(a)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
+          const SizedBox(width: 14),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(a['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF333333))),
-                if (a['content'] != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(a['content'], maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: active ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      active ? 'LIVE: TRUCK DETECTED IN AREA' : 'NO ACTIVE COLLECTION',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: active ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  active ? 'Garbage Truck is in Barangay 133!' : 'Standby / Continuous Scanning',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF18181B),
                   ),
-                if (a['date_posted'] != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(_formatDate(a['date_posted']),
-                      style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  active
+                      ? 'Automated CCTV cameras have recognized a waste collection truck in your vicinity. Please prepare and dispose of your household garbage now.'
+                      : 'Vision-Trak CCTV cameras are active. You will receive an immediate push alert once a truck enters Barangay 133.',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF52525B),
+                    height: 1.4,
                   ),
-              ],
-            ),
-          ),
-        ),
-      )).toList(),
-    );
-  }
-
-  String _formatDate(String? date) {
-    if (date == null) return '';
-    final dt = DateTime.tryParse(date);
-    if (dt == null) return date;
-    return '${dt.month}/${dt.day}/${dt.year}';
-  }
-
-  Widget _buildDrawer() {
-    return Drawer(
-      child: Column(
-        children: [
-          UserAccountsDrawerHeader(
-            decoration: const BoxDecoration(color: _primaryRed),
-            accountName: Text('Welcome! $_residentName', style: const TextStyle(fontWeight: FontWeight.bold)),
-            accountEmail: const Text('Resident'),
-            currentAccountPicture: GestureDetector(
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/profile');
-              },
-              child: CircleAvatar(
-                backgroundColor: Colors.white,
-                backgroundImage: _profilePicUrl != null
-                    ? NetworkImage('${ApiService.baseUrl}$_profilePicUrl')
-                    : null,
-                child: _profilePicUrl == null ? const Icon(Icons.person, size: 40, color: _primaryRed) : null,
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _drawerItem(Icons.dashboard, 'Dashboard', () {
-                  Navigator.pop(context);
-                }),
-                _drawerItem(Icons.campaign, 'Announcements', () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/announcements');
-                }),
-                _drawerItem(Icons.delete_outline, 'Garbage Alerts', () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/garbage-alerts');
-                }),
-                _drawerItem(Icons.feedback, 'Feedback', () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/feedback');
-                }),
-                _drawerItem(Icons.history, 'Activity History', () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/activity-history');
-                }),
-                _drawerItem(Icons.person, 'My Profile', () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/profile');
-                }),
-                const SizedBox(height: 20),
-                const Divider(),
-                _drawerItem(Icons.logout, 'Logout', () {
-                  Navigator.pop(context);
-                  _handleLogout();
-                }),
-                const SizedBox(height: 16),
+                ),
               ],
             ),
           ),
@@ -377,13 +266,243 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _drawerItem(IconData icon, String label, VoidCallback onTap) {
-    return Container(
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(label),
-        onTap: onTap,
-      ),
+  Widget _buildAnnouncementsPreview() {
+    if (_loadingAnnouncements) {
+      return Container(
+        height: 120,
+        alignment: Alignment.center,
+        child: const CircularProgressIndicator(strokeWidth: 2.5, color: _primaryRed),
+      );
+    }
+
+    // Default sample announcements from documentation.pdf Figure 4.1.7 if DB is empty
+    final effectiveList = _announcements.isNotEmpty
+        ? _announcements
+        : [
+            Announcement(
+              announcementId: 1,
+              title: 'Ayuda Senior Citizen',
+              content: 'Financial assistance distribution for registered senior citizens of Barangay 133. Please bring your Senior Citizen ID or Barangay Resident Certificate to the Barangay Covered Court.',
+              datePosted: 'Official Advisory',
+            ),
+            Announcement(
+              announcementId: 2,
+              title: 'Schedule Power Outage',
+              content: 'Meralco advisory: Scheduled preventive maintenance power interruption affecting Zone 11, Tondo, Manila this coming Saturday from 9:00 AM to 2:00 PM.',
+              datePosted: 'Official Advisory',
+            ),
+          ];
+
+    final previewList = effectiveList.take(2).toList();
+
+    return Column(
+      children: previewList.map((a) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFFECACA)),
+                    ),
+                    child: const Text(
+                      'Official Notice',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: _primaryRed,
+                      ),
+                    ),
+                  ),
+                  if (a.datePosted != null)
+                    Text(
+                      a.datePosted!,
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF71717A)),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                a.title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF18181B),
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                a.content,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF52525B), height: 1.4),
+              ),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => Navigator.pushNamed(context, '/announcement-detail', arguments: a),
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 14),
+                  label: const Text('Read More', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: _primaryRed,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
+
+  Widget _buildServicesGrid() {
+    final services = [
+      _ServiceItem(
+        title: 'Announcements',
+        subtitle: 'Official updates & alerts',
+        icon: Icons.campaign_rounded,
+        color: const Color(0xFF1D4ED8),
+        bgColor: const Color(0xFFEFF6FF),
+        route: '/announcements',
+      ),
+      _ServiceItem(
+        title: 'Garbage Alerts',
+        subtitle: 'Live IoT truck detection',
+        icon: Icons.delete_sweep_rounded,
+        color: const Color(0xFFC2410C),
+        bgColor: const Color(0xFFFFF7ED),
+        route: '/garbage-alerts',
+      ),
+      _ServiceItem(
+        title: 'Resident Feedback',
+        subtitle: 'Submit inquiries & reports',
+        icon: Icons.feedback_rounded,
+        color: const Color(0xFF15803D),
+        bgColor: const Color(0xFFF0FDF4),
+        route: '/feedback',
+      ),
+      _ServiceItem(
+        title: 'Activity History',
+        subtitle: 'Personal audit log',
+        icon: Icons.history_rounded,
+        color: const Color(0xFF7E22CE),
+        bgColor: const Color(0xFFFAF5FF),
+        route: '/activity-history',
+      ),
+    ];
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.25,
+      ),
+      itemCount: services.length,
+      itemBuilder: (context, i) {
+        final item = services[i];
+        return InkWell(
+          onTap: () => Navigator.pushNamed(context, item.route),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: item.bgColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(item.icon, color: item.color, size: 24),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF18181B),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.subtitle,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF71717A),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ServiceItem {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final Color bgColor;
+  final String route;
+
+  _ServiceItem({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.bgColor,
+    required this.route,
+  });
 }

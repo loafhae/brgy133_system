@@ -54,21 +54,50 @@ class MyApp extends StatelessWidget {
         title: 'Barangay 133',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          colorSchemeSeed: const Color(0xFFc62828),
+          colorSchemeSeed: const Color(0xFF990000),
           useMaterial3: true,
           brightness: Brightness.light,
-          appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
+          scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+          appBarTheme: const AppBarTheme(
+            centerTitle: false,
+            elevation: 0,
+            backgroundColor: Colors.white,
+            foregroundColor: Color(0xFF18181B),
+          ),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFc62828),
+              backgroundColor: const Color(0xFF16A34A), // Emerald green CTA per Figure 3.7.1
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+              textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
             ),
           ),
           cardTheme: CardThemeData(
-            elevation: 1,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            elevation: 0,
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
+            ),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF990000), width: 1.5),
+            ),
           ),
         ),
         initialRoute: '/login',
