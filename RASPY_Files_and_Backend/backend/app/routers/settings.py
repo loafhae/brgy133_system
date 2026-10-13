@@ -7,7 +7,7 @@ from app.models.settings import SystemSetting
 from pydantic import BaseModel
 from typing import Optional
 
-router = APIRouter(prefix="/api/settings", tags=["settings"])
+router = APIRouter(prefix="/settings", tags=["settings"])
 
 
 class SettingUpdate(BaseModel):

@@ -409,6 +409,49 @@ class TestFR10_SubmitFeedback:
         })
         assert resp.status_code == 201
         assert resp.json()["subject"] == "Noise Complaint"
+        activity = client.get("/api/activity", headers=auth_header(resident_token))
+        assert activity.status_code == 200
+        assert any(
+            log["action_type"] == "feedback_submitted"
+            and log["target_id"] == resp.json()["feedback_id"]
+            for log in activity.json()
+        )
+
+    def test_resident_can_submit_and_official_can_view_attachments(
+        self, client, resident_token, official_token, monkeypatch, tmp_path
+    ):
+        from app.routers import feedback as feedback_router
+
+        monkeypatch.setattr(feedback_router, "FEEDBACK_UPLOAD_DIR", tmp_path)
+        response = client.post(
+            "/api/feedback/with-attachments",
+            headers=auth_header(resident_token),
+            data={"subject": "Attached evidence", "content": "Please review these files"},
+            files=[
+                ("files", ("evidence.jpg", b"\xff\xd8\xffsample-image", "image/jpeg")),
+                ("files", ("document.pdf", b"%PDF-1.4 sample-pdf", "application/pdf")),
+            ],
+        )
+        assert response.status_code == 201
+        attachments = response.json()["attachments"]
+        assert [item["original_filename"] for item in attachments] == [
+            "evidence.jpg",
+            "document.pdf",
+        ]
+
+        for attachment, expected_content in zip(
+            attachments,
+            [b"\xff\xd8\xffsample-image", b"%PDF-1.4 sample-pdf"],
+        ):
+            download_path = (
+                f"/api/feedback/{response.json()['feedback_id']}"
+                f"/attachments/{attachment['attachment_id']}"
+            )
+            download = client.get(download_path, headers=auth_header(official_token))
+            assert download.status_code == 200
+            assert download.content == expected_content
+            denied = client.get(download_path, headers=auth_header(resident_token))
+            assert denied.status_code == 403
 
     def test_resident_can_view_own_feedback(self, client, resident_token):
         client.post("/api/feedback", headers=auth_header(resident_token), json={
@@ -419,14 +462,33 @@ class TestFR10_SubmitFeedback:
         subjects = [f["subject"] for f in resp.json()]
         assert "Road Issue" in subjects
 
-    def test_duplicate_feedback_prevented(self, client, resident_token):
-        client.post("/api/feedback", headers=auth_header(resident_token), json={
+    def test_resident_can_submit_duplicate_feedback_immediately(self, client, resident_token):
+        first = client.post("/api/feedback", headers=auth_header(resident_token), json={
             "subject": "Spam", "content": "Duplicate content here"
         })
-        resp = client.post("/api/feedback", headers=auth_header(resident_token), json={
+        second = client.post("/api/feedback", headers=auth_header(resident_token), json={
             "subject": "Spam", "content": "Duplicate content here"
         })
-        assert resp.status_code == 429
+        assert first.status_code == 201
+        assert second.status_code == 201
+        assert first.json()["feedback_id"] != second.json()["feedback_id"]
+
+    def test_resident_can_submit_duplicate_feedback_with_attachments_immediately(
+        self, client, resident_token, tmp_path, monkeypatch
+    ):
+        from app.routers import feedback as feedback_router
+
+        monkeypatch.setattr(feedback_router, "FEEDBACK_UPLOAD_DIR", tmp_path)
+        submissions = [
+            client.post(
+                "/api/feedback/with-attachments",
+                headers=auth_header(resident_token),
+                data={"subject": "Repeated report", "content": "Same message"},
+            )
+            for _ in range(2)
+        ]
+        assert [response.status_code for response in submissions] == [201, 201]
+        assert submissions[0].json()["feedback_id"] != submissions[1].json()["feedback_id"]
 
     def test_resident_cannot_access_others_feedback(self, client, resident_token, super_admin_token, db):
         resp = client.post("/api/feedback", headers=auth_header(resident_token), json={
@@ -567,6 +629,81 @@ class TestFR15_WebBasedPortal:
 
 class TestFR16_ResidentActivityHistory:
     """FR16: Residents can view a log of their personal activity history"""
+
+    def test_successful_login_is_recorded(self, client, resident_token):
+        resp = client.post(
+            "/api/auth/login",
+            json={"username": "resident1", "password": "resident123"},
+        )
+        assert resp.status_code == 200
+        activity = client.get(
+            "/api/activity",
+            headers=auth_header(resp.json()["access_token"]),
+        )
+        assert activity.status_code == 200
+        assert any(log["action_type"] == "login" for log in activity.json())
+
+    def test_failed_login_is_recorded_for_system_logs(
+        self, client, super_admin_token, resident_token
+    ):
+        login_response = client.post(
+            "/api/auth/login",
+            json={"username": "resident1", "password": "incorrect"},
+        )
+        assert login_response.status_code == 401
+
+        logs = client.get(
+            "/api/activity/all",
+            headers=auth_header(super_admin_token),
+        )
+        assert logs.status_code == 200
+        failed_login = next(log for log in logs.json() if log["action_type"] == "login_failed")
+        assert failed_login["username"] == "Unauthenticated"
+        assert "HTTP 401" in failed_login["description"]
+        assert "attempted username: 'resident1'" in failed_login["description"]
+
+    def test_forbidden_system_log_access_is_recorded(
+        self, client, resident_token, super_admin_token
+    ):
+        forbidden = client.get(
+            "/api/activity/all",
+            headers=auth_header(resident_token),
+        )
+        assert forbidden.status_code == 403
+
+        logs = client.get(
+            "/api/activity/all",
+            headers=auth_header(super_admin_token),
+        )
+        assert logs.status_code == 200
+        denied_access = next(
+            log for log in logs.json()
+            if log["action_type"] == "activity_get_failed"
+        )
+        assert denied_access["username"] == "resident1"
+        assert "HTTP 403" in denied_access["description"]
+
+    def test_successful_settings_change_is_recorded_for_system_logs(
+        self, client, super_admin_token
+    ):
+        response = client.put(
+            "/api/settings/audit-test-setting",
+            headers=auth_header(super_admin_token),
+            json={"config_value": "updated"},
+        )
+        assert response.status_code == 200
+
+        logs = client.get(
+            "/api/activity/all",
+            headers=auth_header(super_admin_token),
+        )
+        assert logs.status_code == 200
+        setting_log = next(
+            log for log in logs.json()
+            if log["action_type"] == "setting_updated"
+        )
+        assert setting_log["username"] == "admin"
+        assert setting_log["target_table"] == "tbl_SystemSettings"
 
     def test_resident_can_view_own_activity(self, client, resident_token):
         resp = client.get("/api/activity", headers=auth_header(resident_token))

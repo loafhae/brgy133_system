@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import require_role, get_current_user
@@ -13,7 +13,7 @@ from app.schemas.detection import (
 )
 from datetime import datetime
 
-router = APIRouter(prefix="/api/detection", tags=["detection"])
+router = APIRouter(prefix="/detection", tags=["detection"])
 
 
 @router.post("/event", response_model=DetectionLogResponse)
@@ -27,6 +27,7 @@ def receive_detection_event(
         camera_id=body.camera_id,
         camera_name=body.camera_name,
         notification_status="pending",
+        event_type=body.event_type if hasattr(body, 'event_type') else "detection",
     )
     db.add(log)
     db.commit()
@@ -37,6 +38,7 @@ def receive_detection_event(
 @router.post("/truck-status")
 def receive_truck_status(
     body: TruckStatusEvent,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     event_type = body.event_type.lower()
@@ -51,6 +53,7 @@ def receive_truck_status(
         camera_id=body.camera_id,
         camera_name=body.camera_name,
         notification_status="pending",
+        event_type=event_type,
     )
     db.add(log)
     db.flush()
@@ -65,12 +68,14 @@ def receive_truck_status(
     )
     db.add(notification)
 
+    client_ip = getattr(request.state, "client_ip", "unknown")
     audit = AuditLog(
         user_id=None,
         action_type=event_type,
         target_table="tbl_DetectionLog",
         target_id=log.log_id,
         description=f"{action_label} on {body.camera_name} (confidence={body.confidence})",
+        ip_address=client_ip,
     )
     db.add(audit)
 
@@ -88,16 +93,19 @@ def receive_truck_status(
 @router.post("/camera-event")
 def receive_camera_event(
     body: CameraSwitchEvent,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     event_label = body.event_type.replace("_", " ").title()
 
+    client_ip = getattr(request.state, "client_ip", "unknown")
     audit = AuditLog(
         user_id=None,
         action_type=body.event_type,
         target_table="tbl_DetectionLog",
         target_id=None,
         description=f"{event_label} on {body.camera_name} (id={body.camera_id})",
+        ip_address=client_ip,
     )
     db.add(audit)
     db.commit()
@@ -142,44 +150,9 @@ def list_notifications(
 
 
 @router.get("/status")
-def get_detection_status(
-    db: Session = Depends(get_db),
-):
-    latest_notif = (
-        db.query(Notification)
-        .filter(
-            Notification.notification_type == "detection",
-            Notification.target_group == "residents",
-        )
-        .order_by(Notification.created_at.desc())
-        .first()
-    )
-
-    if not latest_notif:
-        return {"status": "no_detections", "last_detection": None}
-
-    cooldown = 300
-    try:
-        from app.models.settings import SystemSetting
-        setting = db.query(SystemSetting).filter(
-            SystemSetting.config_key == "notification_cooldown"
-        ).first()
-        if setting:
-            cooldown = int(setting.config_value)
-    except Exception:
-        pass
-
-    now = datetime.now()
-    is_active = False
-    if latest_notif.sent_at:
-        elapsed = (now - latest_notif.sent_at).total_seconds()
-        is_active = elapsed < cooldown
-
-    return {
-        "status": "active" if is_active else "idle",
-        "last_detection": {
-            "title": latest_notif.title,
-            "message": latest_notif.message,
-            "timestamp": str(latest_notif.sent_at) if latest_notif.sent_at else None,
-        },
-    }
+@router.get("/status/")
+def get_detection_status():
+    from app.routers.websocket import camera_states, _ensure_cameras
+    _ensure_cameras()
+    truck_active = any(cam.get("truck_in_zone", False) for cam in camera_states.values())
+    return {"status": "active" if truck_active else "inactive", "system": "Vision-Trak"}

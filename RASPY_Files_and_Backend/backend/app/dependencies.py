@@ -7,7 +7,6 @@ from app.models.user import User
 
 security = HTTPBearer()
 
-
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
@@ -19,13 +18,19 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         )
-    user_id = payload.get("sub")
-    if user_id is None:
+    sub = payload.get("sub")
+    if sub is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
         )
-    user = db.query(User).filter(User.user_id == int(user_id)).first()
+    
+    # Safely look up by user_id if numeric, or username if string (e.g. 'admin')
+    if str(sub).isdigit():
+        user = db.query(User).filter(User.user_id == int(sub)).first()
+    else:
+        user = db.query(User).filter(User.username == str(sub)).first()
+
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -38,13 +43,19 @@ def get_current_user(
         )
     return user
 
-
 def require_role(*allowed_roles: str):
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
-        if current_user.roles not in allowed_roles:
+        # Normalize user roles from comma-separated string or array
+        user_roles = []
+        if hasattr(current_user, "roles") and current_user.roles:
+            user_roles = [r.strip() for r in str(current_user.roles).split(",") if r.strip()]
+        elif hasattr(current_user, "role") and current_user.role:
+            user_roles = [current_user.role.strip()]
+            
+        if not any(r in allowed_roles for r in user_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Role '{current_user.roles}' not authorized. Required: {allowed_roles}",
+                detail=f"Roles '{user_roles}' not authorized. Required: {allowed_roles}",
             )
         return current_user
     return role_checker

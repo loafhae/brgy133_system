@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../api/client'; // Import your pre-configured axios instance
+import api from '../api/client';
 
 export default function OfficialDashboard() {
   const [announcements, setAnnouncements] = useState([]);
@@ -8,21 +8,18 @@ export default function OfficialDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      // 1. Fetch real Announcements using your configured axios instance
       const announceRes = await api.get('/announcements?published_only=true&limit=3');
       if (announceRes.data) {
         setAnnouncements(announceRes.data);
       }
 
-      // 2. Fetch real resident Feedback
       const feedbackRes = await api.get('/feedback?limit=5');
       if (feedbackRes.data) {
         setFeedbacks(feedbackRes.data);
       }
 
-      // 3. Fetch real Vision-Trak Camera Detection Logs
       const detectionRes = await api.get('/detection/logs');
-      if (detectionRes.data) {
+      if (detectionRes.data && Array.isArray(detectionRes.data)) {
         setDetectionLogs(detectionRes.data.slice(0, 4));
       }
     } catch (err) {
@@ -33,24 +30,69 @@ export default function OfficialDashboard() {
   useEffect(() => {
     fetchDashboardData();
 
-    // Background WebSockets for real-time dashboard hot-reloading
-    const feedbackSocket = new WebSocket('wss://vision-worldcat-paint-typical.trycloudflare.com/api/ws/feedback-updates');
-    const systemSocket = new WebSocket('wss://vision-worldcat-paint-typical.trycloudflare.com/api/ws');
+    let feedbackSocket = null;
+    let systemSocket = null;
+    let feedbackReconnectTimer = null;
+    let systemReconnectTimer = null;
 
-    feedbackSocket.onmessage = (event) => {
+    function connectSockets() {
+      let wsBaseUrl;
       try {
-        const data = JSON.parse(event.data);
-        if (data.event === "new_feedback") fetchDashboardData();
-      } catch (e) { console.error(e); }
-    };
+        const baseURL = api.defaults.baseURL || window.location.origin;
+        const parsedUrl = new URL(baseURL, window.location.origin);
+        const wsProtocol = parsedUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsBaseUrl = `${wsProtocol}//${parsedUrl.host}`;
+      } catch (e) {
+        wsBaseUrl = window.location.origin.replace(/^http/, 'ws');
+      }
 
-    systemSocket.onmessage = () => {
-      fetchDashboardData();
-    };
+      try {
+        const token = localStorage.getItem('token') || localStorage.getItem('access_token') || '';
+        const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+
+        feedbackSocket = new WebSocket(`${wsBaseUrl}/api/ws/feedback-updates${tokenParam}`);
+        systemSocket = new WebSocket(`${wsBaseUrl}/api/ws${tokenParam}`);
+
+        feedbackSocket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data?.event === "new_feedback") fetchDashboardData();
+          } catch (e) { console.error(e); }
+        };
+
+        systemSocket.onmessage = () => {
+          fetchDashboardData();
+        };
+
+        systemSocket.onclose = () => {
+          systemReconnectTimer = setTimeout(connectSockets, 3000);
+        };
+
+        feedbackSocket.onclose = () => {
+          feedbackReconnectTimer = setTimeout(connectSockets, 3000);
+        };
+
+        systemSocket.onerror = () => {};
+        feedbackSocket.onerror = () => {};
+      } catch (err) {
+        console.warn("WebSocket connection skipped or unavailable:", err);
+      }
+    }
+
+    connectSockets();
+
+    const polling = setInterval(() => fetchDashboardData(), 5000);
 
     return () => {
-      feedbackSocket.close();
-      systemSocket.close();
+      clearInterval(polling);
+      clearTimeout(feedbackReconnectTimer);
+      clearTimeout(systemReconnectTimer);
+      try {
+        if (feedbackSocket) feedbackSocket.close();
+        if (systemSocket) systemSocket.close();
+      } catch (e) {
+        // Cleanup error suppression
+      }
     };
   }, []);
 
@@ -63,10 +105,10 @@ export default function OfficialDashboard() {
           📢 Active Announcements
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-          {announcements.length > 0 ? (
+          {announcements?.length > 0 ? (
             announcements.map((item) => (
               <div 
-                key={item.announcement_id} 
+                key={item?.announcement_id} 
                 style={{
                   backgroundColor: '#fff',
                   padding: '20px',
@@ -80,15 +122,15 @@ export default function OfficialDashboard() {
               >
                 <div>
                   <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', color: '#212529', fontWeight: '700' }}>
-                    {item.title}
+                    {item?.title}
                   </h4>
                   <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#495057', lineHeight: '1.4' }}>
-                    {item.content}
+                    {item?.content}
                   </p>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#868e96' }}>
-                  <span>Posted: {item.date_posted ? new Date(item.date_posted).toLocaleDateString() : 'Recent'}</span>
-                  {item.attachment_path && <span style={{ color: '#1976d2', fontWeight: '600' }}>📎 Has Attachment</span>}
+                  <span>Posted: {item?.date_posted ? new Date(item.date_posted).toLocaleDateString() : 'Recent'}</span>
+                  {item?.attachment_path && <span style={{ color: '#1976d2', fontWeight: '600' }}>📎 Has Attachment</span>}
                 </div>
               </div>
             ))
@@ -110,10 +152,10 @@ export default function OfficialDashboard() {
           </h3>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', maxHeight: '420px', paddingRight: '4px' }}>
-            {feedbacks.length > 0 ? (
+            {feedbacks?.length > 0 ? (
               feedbacks.map((fb) => (
                 <div 
-                  key={fb.feedback_id} 
+                  key={fb?.feedback_id} 
                   style={{ 
                     padding: '14px', 
                     backgroundColor: '#f8f9fa', 
@@ -126,17 +168,17 @@ export default function OfficialDashboard() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '13px', fontWeight: '700', color: '#1976d2' }}>
-                      @{fb.username || 'Resident'}
+                      @{fb?.username || 'Resident'}
                     </span>
                     <span style={{ fontSize: '11px', color: '#868e96' }}>
-                      {new Date(fb.timestamp).toLocaleString()}
+                      {fb?.timestamp ? new Date(fb.timestamp).toLocaleString() : ''}
                     </span>
                   </div>
                   <div style={{ fontSize: '12px', fontWeight: '600', color: '#212529' }}>
-                    Activity/Subject: {fb.subject}
+                    Activity/Subject: {fb?.subject}
                   </div>
                   <p style={{ margin: 0, fontSize: '12px', color: '#495057', lineHeight: '1.4' }}>
-                    Description: {fb.content}
+                    Description: {fb?.content}
                   </p>
                 </div>
               ))
@@ -154,18 +196,25 @@ export default function OfficialDashboard() {
             📹 Live Vision-Trak Camera Tracking
           </h4>
 
-          {detectionLogs.length > 0 ? (
+          {detectionLogs?.length > 0 ? (
             detectionLogs.map((log) => {
-              const isHighConfidence = log.confidence_score >= 0.80;
+              const confidence = log?.confidence_score ?? 0;
+              const eventType = log?.event_type;
+              const isPresent = eventType === 'truck_present';
+              const isDeparted = eventType === 'truck_departed';
+              const label = isPresent ? 'TRUCK DETECTED' : isDeparted ? 'TRUCK LEFT' : 'SCANNING';
+              const borderCol = isPresent ? '#c62828' : isDeparted ? '#e65100' : '#adb5bd';
+              const bgCol = isPresent ? '#ffebee' : isDeparted ? '#fff3e0' : '#f1f3f5';
+              const textCol = isPresent ? '#c62828' : isDeparted ? '#e65100' : '#6c757d';
               return (
                 <div 
-                  key={log.log_id} 
+                  key={log?.log_id} 
                   style={{ 
                     backgroundColor: '#fff', 
                     padding: '16px', 
                     borderRadius: '8px', 
                     boxShadow: '0 4px 6px rgba(0,0,0,0.04)',
-                    borderRight: isHighConfidence ? '5px solid #c62828' : '5px solid #adb5bd',
+                    borderRight: `5px solid ${borderCol}`,
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '6px'
@@ -173,7 +222,7 @@ export default function OfficialDashboard() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '13px', fontWeight: '700', color: '#212529' }}>
-                      {log.camera_name}
+                      {log?.camera_name || 'Camera'}
                     </span>
                     <span 
                       style={{ 
@@ -181,17 +230,17 @@ export default function OfficialDashboard() {
                         padding: '2px 6px', 
                         borderRadius: '4px', 
                         fontWeight: '700',
-                        backgroundColor: isHighConfidence ? '#ffebee' : '#f1f3f5',
-                        color: isHighConfidence ? '#c62828' : '#6c757d'
+                        backgroundColor: bgCol,
+                        color: textCol
                       }}
                     >
-                      {isHighConfidence ? 'TRUCK DETECTED' : 'SCANNING'}
+                      {label}
                     </span>
                   </div>
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#6c757d' }}>
-                    <span>Confidence: {(log.confidence_score * 100).toFixed(1)}%</span>
-                    <span>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span>Confidence: {(confidence * 100).toFixed(1)}%</span>
+                    <span>{log?.timestamp ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                   </div>
                 </div>
               );

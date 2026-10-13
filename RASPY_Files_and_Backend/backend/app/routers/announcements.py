@@ -13,7 +13,8 @@ from app.schemas.announcement import AnnouncementCreate, AnnouncementUpdate, Ann
 UPLOAD_DIR = "uploads/announcements"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-router = APIRouter(prefix="/api/announcements", tags=["announcements"])
+# 🛑 Fixed: Removed redundant "/api" since main.py already prepends it
+router = APIRouter(prefix="/announcements", tags=["announcements"])
 
 
 @router.get("", response_model=list[AnnouncementResponse])
@@ -84,7 +85,6 @@ def create_announcement(
         )
         db.add(notif)
 
-        # Broadcast FCM Push Notification to all residents with a saved token
         residents_with_tokens = db.query(Resident).filter(Resident.fcm_token != None).all()
         tokens = [r.fcm_token for r in residents_with_tokens if r.fcm_token]
 

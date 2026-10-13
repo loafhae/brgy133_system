@@ -17,6 +17,7 @@ class DetectionLog(Base):
     )
     camera_id = Column(Integer)
     camera_name = Column(String(100))
+    event_type = Column(String(50), nullable=True)
 
     notifications = relationship("Notification", back_populates="detection_log")
 

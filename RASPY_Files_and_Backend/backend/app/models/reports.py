@@ -8,7 +8,7 @@ class Report(Base):
 
     report_id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(255), nullable=False)
-    file_format = Column(Enum("pdf", "csv", name="file_format_enum"), default="pdf")
+    file_format = Column(Enum("pdf", "docx", name="file_format_enum"), default="pdf")
     report_type = Column(
         Enum("announcement", "feedback", "activity", "detection", name="report_type_enum"),
         nullable=False,

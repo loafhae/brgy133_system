@@ -6,7 +6,7 @@ from app.database import get_db
 from app.dependencies import require_role
 from app.models.user import User
 
-router = APIRouter(prefix="/api/roles", tags=["roles"])
+router = APIRouter(prefix="/roles", tags=["roles"])
 
 class RoleUpdateRequest(BaseModel):
     new_role: str  # e.g. "super_admin", "official", "resident"

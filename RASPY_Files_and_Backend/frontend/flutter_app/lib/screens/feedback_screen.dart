@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/feedback_provider.dart';
@@ -13,6 +14,44 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   final _subjectCtrl = TextEditingController();
   final _contentCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  List<PlatformFile> _attachments = [];
+
+  Future<void> _pickAttachments() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
+        allowMultiple: true,
+        withData: true,
+      );
+      if (result != null && mounted) {
+        final oversized = result.files.where(
+          (file) => file.size > 10 * 1024 * 1024,
+        );
+        final accepted = result.files
+            .where((file) => file.size <= 10 * 1024 * 1024)
+            .toList();
+        final availableSlots = 10 - _attachments.length;
+        if (oversized.isNotEmpty || accepted.length > availableSlots) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Choose up to 10 files total, each 10 MB or smaller.',
+              ),
+            ),
+          );
+        }
+        setState(() {
+          _attachments = [..._attachments, ...accepted.take(availableSlots)];
+        });
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not select files: $error')));
+    }
+  }
 
   @override
   void dispose() {
@@ -29,18 +68,28 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         title: const Text('Confirm Submission'),
         content: const Text('Are you sure you want to submit this feedback?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('NO')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('NO'),
+          ),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
               final fp = context.read<FeedbackProvider>();
-              final ok = await fp.submitFeedback(_subjectCtrl.text, _contentCtrl.text);
+              final ok = await fp.submitFeedback(
+                _subjectCtrl.text,
+                _contentCtrl.text,
+                _attachments,
+              );
               if (!mounted) return;
               if (ok) {
                 _subjectCtrl.clear();
                 _contentCtrl.clear();
+                setState(() => _attachments = []);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Feedback Submitted Successfully!')),
+                  const SnackBar(
+                    content: Text('Feedback Submitted Successfully!'),
+                  ),
                 );
               }
             },
@@ -69,13 +118,22 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8)),
-                    child: Text(fp.error!, style: const TextStyle(color: Colors.red)),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      fp.error!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
                   );
                 },
               ),
 
-              const Text('Subject', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const Text(
+                'Subject',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _subjectCtrl,
@@ -83,11 +141,15 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   hintText: 'e.g. Noise, Garbage, Water',
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
 
-              const Text('Message', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const Text(
+                'Message',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _contentCtrl,
@@ -96,23 +158,40 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   hintText: 'Describe your concern...',
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
 
               Row(
                 children: [
                   OutlinedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('File upload coming soon')),
-                      );
-                    },
+                    onPressed: _pickAttachments,
                     icon: const Icon(Icons.attach_file),
-                    label: const Text('Attach a file'),
+                    label: const Text('Attach images or PDFs'),
                   ),
                 ],
               ),
+              if (_attachments.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (var i = 0; i < _attachments.length; i++)
+                      InputChip(
+                        label: Text(_attachments[i].name),
+                        onDeleted: () =>
+                            setState(() => _attachments.removeAt(i)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${_attachments.length} of 10 files selected (10 MB max each)',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
               const SizedBox(height: 24),
 
               Consumer<FeedbackProvider>(
@@ -122,7 +201,14 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   child: ElevatedButton(
                     onPressed: fp.submitting ? null : _submit,
                     child: fp.submitting
-                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
                         : const Text('SUBMIT', style: TextStyle(fontSize: 16)),
                   ),
                 ),

@@ -17,6 +17,7 @@ class User(Base):
     reset_otp = Column(String(10), nullable=True) # For password recovery code
     otp_expiry = Column(DateTime, nullable=True) # For code expiration
     must_change_password = Column(Boolean, default=False)
+    last_seen = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

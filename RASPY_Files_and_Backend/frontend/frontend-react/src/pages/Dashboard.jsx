@@ -43,7 +43,7 @@ export default function Dashboard() {
       {/* Spacious Stat Cards Grid */}
       <Grid container spacing={4}>
         {cards.map((c, idx) => (
-          <Grid item xs={12} sm={4} key={idx}>
+          <Grid size={{ xs: 12, sm: 4 }} key={idx}>
             <Card 
               onClick={() => navigate(c.path)}
               sx={{ 

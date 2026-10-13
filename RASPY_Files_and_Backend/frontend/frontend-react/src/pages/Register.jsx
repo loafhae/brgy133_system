@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Box, TextField, Button, Typography, Alert, MenuItem, Select, FormControl, InputLabel, Card, FormControlLabel, Checkbox
+  Box, TextField, Button, Typography, Alert, Card, FormControlLabel, Checkbox, InputAdornment, IconButton
 } from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import api from '../api/client';
 
 export default function Register() {
@@ -11,8 +12,11 @@ export default function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [form, setForm] = useState({
     username: '', email: '', password: '', confirmPassword: '',
+    roles: 'official', // Default to barangay official
     first_name: '', middle_name: '', last_name: '', gender: '',
     birthday: '', civil_status: '', address: '', mobile_number: '',
   });
@@ -41,7 +45,7 @@ export default function Register() {
     setLoading(true);
     try {
       await api.post('/auth/register', form);
-      alert('Registration successful! Your account is pending Super Admin residency verification.');
+      alert('Registration successful! You can now log in to your account.');
       navigate('/login');
     } catch (err) {
       const d = err.response?.data?.detail;
@@ -84,10 +88,25 @@ export default function Register() {
               onChange={(e) => setForm({ ...form, username: e.target.value })} sx={{ mb: 2 }} />
             <TextField label="Email Address" type="email" fullWidth required value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })} sx={{ mb: 2 }} />
-            <TextField label="Password" type="password" fullWidth required value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })} sx={{ mb: 2 }} />
-            <TextField label="Confirm Password" type="password" fullWidth required value={form.confirmPassword}
-              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} sx={{ mb: 3 }} />
+
+            <TextField label="Password" type={showPassword ? 'text' : 'password'} fullWidth required value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })} sx={{ mb: 2 }}
+              slotProps={{ input: { endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" size="small">
+                    {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                  </IconButton>
+                </InputAdornment>
+              )}}} />
+            <TextField label="Confirm Password" type={showConfirmPassword ? 'text' : 'password'} fullWidth required value={form.confirmPassword}
+              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} sx={{ mb: 3 }}
+              slotProps={{ input: { endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end" size="small">
+                    {showConfirmPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                  </IconButton>
+                </InputAdornment>
+              )}}} />
             
             <Button type="submit" variant="contained" fullWidth size="large" sx={{ py: 1.5, fontWeight: 700, mb: 2 }}>
               NEXT

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:file_picker/file_picker.dart';
 import '../models/feedback_model.dart';
 import '../services/api_service.dart';
 
@@ -20,7 +21,9 @@ class FeedbackProvider with ChangeNotifier {
 
     try {
       final data = await ApiService.getList('/feedback');
-      _feedbacks = data.map((e) => FeedbackModel.fromJson(e as Map<String, dynamic>)).toList();
+      _feedbacks = data
+          .map((e) => FeedbackModel.fromJson(e as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');
     }
@@ -29,16 +32,17 @@ class FeedbackProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> submitFeedback(String subject, String content) async {
+  Future<bool> submitFeedback(
+    String subject,
+    String content,
+    List<PlatformFile> files,
+  ) async {
     _submitting = true;
     _error = null;
     notifyListeners();
 
     try {
-      await ApiService.post('/feedback', {
-        'subject': subject,
-        'content': content,
-      });
+      await ApiService.submitFeedback(subject, content, files);
       _submitting = false;
       notifyListeners();
       return true;

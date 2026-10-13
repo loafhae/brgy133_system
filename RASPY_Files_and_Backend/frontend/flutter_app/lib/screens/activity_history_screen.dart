@@ -12,6 +12,7 @@ class ActivityHistoryScreen extends StatefulWidget {
 class _ActivityHistoryScreenState extends State<ActivityHistoryScreen> {
   List<Activity> _activities = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -20,12 +21,23 @@ class _ActivityHistoryScreenState extends State<ActivityHistoryScreen> {
   }
 
   Future<void> _fetch() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final data = await ApiService.getList('/activity');
-      _activities = data.map((e) => Activity.fromJson(e as Map<String, dynamic>)).toList();
-    } catch (_) {}
-    setState(() => _loading = false);
+      final activities = data
+          .map((e) => Activity.fromJson(e as Map<String, dynamic>))
+          .toList();
+      if (!mounted) return;
+      setState(() => _activities = activities);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = 'Could not load activity history: $error');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -35,38 +47,96 @@ class _ActivityHistoryScreenState extends State<ActivityHistoryScreen> {
       body: RefreshIndicator(
         onRefresh: _fetch,
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? _statusList(const CircularProgressIndicator())
+            : _error != null
+            ? _statusList(
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, size: 40),
+                    const SizedBox(height: 12),
+                    Text(_error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _fetch,
+                      child: const Text('Try again'),
+                    ),
+                  ],
+                ),
+              )
             : _activities.isEmpty
-                ? const Center(child: Text('No activity yet'))
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _activities.length,
-                    itemBuilder: (_, i) {
-                      final a = _activities[i];
-                      final dateStr = _formatDate(a.timestamp);
-                      final timeStr = _formatTime(a.timestamp);
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: _iconColor(a.actionType),
-                            child: Icon(_iconFor(a.actionType), color: Colors.white, size: 20),
-                          ),
-                          title: Text(a.actionType.replaceAll('_', ' ')),
-                          subtitle: Text(a.description ?? ''),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(dateStr, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                              Text(timeStr, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
-                            ],
-                          ),
+            ? _statusList(const Text('No activity yet'))
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: _activities.length,
+                itemBuilder: (_, i) {
+                  final a = _activities[i];
+                  final dateStr = _formatDate(a.timestamp);
+                  final timeStr = _formatTime(a.timestamp);
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: _iconColor(a.actionType),
+                        child: Icon(
+                          _iconFor(a.actionType),
+                          color: Colors.white,
+                          size: 20,
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                      title: Text(a.actionType.replaceAll('_', ' ')),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (a.description != null) Text(a.description!),
+                          if (a.targetTable != null)
+                            Text(
+                              'Table: ${a.targetTable}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                        ],
+                      ),
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            dateStr,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          Text(
+                            timeStr,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
       ),
+    );
+  }
+
+  Widget _statusList(Widget child) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.65,
+          child: Center(child: child),
+        ),
+      ],
     );
   }
 

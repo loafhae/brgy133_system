@@ -16,13 +16,27 @@ import Reports from './pages/Reports';
 import ActivityLogs from './pages/ActivityLogs';
 import DetectionLogs from './pages/DetectionLogs';
 import Settings from './pages/Settings';
+import SystemLogs from './pages/SystemLogs';
 
 // Helper component to route "/" dynamically based on user role
 function DynamicDashboard() {
   const { user } = useAuth();
-  if (user?.role === 'official') {
+  
+  // Safely extract roles whether it's an array, comma string, or single value
+  let roles = [];
+  if (Array.isArray(user?.roles)) {
+    roles = user.roles;
+  } else if (typeof user?.roles === 'string') {
+    roles = user.roles.split(',').map((r) => r.trim());
+  } else if (user?.role) {
+    roles = [user.role];
+  }
+
+  // If the user is an official and NOT a super_admin, show the Official Dashboard
+  if (roles.includes('official') && !roles.includes('super_admin')) {
     return <OfficialDashboard />;
   }
+  
   return <Dashboard />;
 }
 
@@ -47,10 +61,17 @@ export default function App() {
               <Route index element={<DynamicDashboard />} />
               <Route path="residents" element={<Residents />} />
               <Route path="announcements" element={<Announcements />} />
-              <Route path="feedback" element={<Feedback />} />
               <Route path="reports" element={<Reports />} />
               <Route path="activity" element={<ActivityLogs />} />
               <Route path="detection-logs" element={<DetectionLogs />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
+          </Route>
+
+          {/* Official Only Routes */}
+          <Route element={<ProtectedRoute roles={['official']} />}>
+            <Route element={<DashboardLayout />}>
+              <Route path="feedback" element={<Feedback />} />
             </Route>
           </Route>
 
@@ -58,12 +79,12 @@ export default function App() {
           <Route element={<ProtectedRoute roles={['super_admin']} />}>
             <Route element={<DashboardLayout />}>
               <Route path="users" element={<Users />} />
-              <Route path="settings" element={<Settings />} />
+              <Route path="system-logs" element={<SystemLogs />} />
             </Route>
           </Route>
 
           {/* Catch-all fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

@@ -105,7 +105,7 @@ export default function PasswordRecovery() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               We sent a 6-digit code to {email}. It expires in 10 minutes.
             </Typography>
-            <TextField label="6-Digit Code" fullWidth required inputProps={{ maxLength: 6 }} value={otp}
+            <TextField label="6-Digit Code" fullWidth required slotProps={{ input: { maxLength: 6 } }} value={otp}
               onChange={(e) => setOtp(e.target.value)} sx={{ mb: 3, textAlign: 'center' }} />
             <Button type="submit" variant="contained" fullWidth size="large" disabled={loading} sx={{ py: 1.5, fontWeight: 700, mb: 2 }}>
               {loading ? 'Verifying...' : 'VERIFY CODE'}

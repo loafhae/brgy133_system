@@ -11,6 +11,7 @@ class Feedback(Base):
     content = Column(Text, nullable=False)
     timestamp = Column(DateTime, server_default=func.now())
     attachment_path = Column(String(500))
+    attachments = Column(Text)
     created_by = Column(Integer, ForeignKey("tbl_users.user_id", ondelete="CASCADE"), nullable=False)
     is_resolved = Column(Integer, default=0)
     resolved_at = Column(DateTime, nullable=True)

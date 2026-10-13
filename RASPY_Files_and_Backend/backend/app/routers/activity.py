@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.dependencies import require_role, get_current_user
@@ -8,8 +8,10 @@ from app.models.user import User
 from app.models.audit import AuditLog
 from app.models.feedback import Feedback
 from app.models.detection import Notification
+from app.services.pdf_export import generate_system_logs_pdf
 
-router = APIRouter(prefix="/api/activity", tags=["activity"])
+# 🛑 Fixed: Removed redundant "/api"
+router = APIRouter(prefix="/activity", tags=["activity"])
 
 
 def format_role(role_val: Optional[str]) -> str:
@@ -28,7 +30,7 @@ def get_my_activity(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("resident")),
+    current_user: User = Depends(get_current_user),
 ):
     logs = (
         db.query(AuditLog)
@@ -43,6 +45,7 @@ def get_my_activity(
             "log_id": l.log_id,
             "action_type": l.action_type,
             "target_table": l.target_table,
+            "target_id": l.target_id,
             "description": l.description,
             "timestamp": str(l.timestamp) if l.timestamp else None,
         }
@@ -54,6 +57,9 @@ def get_my_activity(
 def get_all_activity(
     search: Optional[str] = None,
     activity_type: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    role: Optional[str] = None,
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -62,6 +68,17 @@ def get_all_activity(
     query = db.query(AuditLog)
     if activity_type:
         query = query.filter(AuditLog.action_type == activity_type)
+    if search:
+        query = query.filter(
+            AuditLog.description.ilike(f"%{search}%") |
+            AuditLog.action_type.ilike(f"%{search}%")
+        )
+    if date_from:
+        query = query.filter(AuditLog.timestamp >= date_from)
+    if date_to:
+        query = query.filter(AuditLog.timestamp <= date_to)
+    if role:
+        query = query.join(User, AuditLog.user_id == User.user_id).filter(User.roles.ilike(f"%{role}%"))
     query = query.options(joinedload(AuditLog.user))
     logs = (
         query.order_by(AuditLog.timestamp.desc())
@@ -99,14 +116,114 @@ def get_all_activity(
             {
                 "log_id": l.log_id,
                 "user_id": l.user_id,
-                "username": user.username if user else f"User #{l.user_id}",
+                "username": user.username if user else (
+                    f"User #{l.user_id}" if l.user_id is not None else "Unauthenticated"
+                ),
                 "role": user_role,
                 "action_type": l.action_type,
                 "target_table": l.target_table,
                 "description": l.description,
                 "timestamp": str(l.timestamp) if l.timestamp else None,
+                "ip_address": l.ip_address if hasattr(l, 'ip_address') else None,
                 "is_active": is_online,
             }
         )
 
-    return response
+    response_data = response
+    return response_data
+
+
+@router.get("/all/export")
+def export_system_logs(
+    format: str = "pdf",
+    search: Optional[str] = None,
+    activity_type: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    role: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("super_admin")),
+):
+    # Build query with same filters as get_all_activity
+    query = db.query(AuditLog)
+    if activity_type:
+        query = query.filter(AuditLog.action_type == activity_type)
+    if search:
+        query = query.filter(
+            AuditLog.description.ilike(f"%{search}%") |
+            AuditLog.action_type.ilike(f"%{search}%")
+        )
+    if date_from:
+        query = query.filter(AuditLog.timestamp >= date_from)
+    if date_to:
+        query = query.filter(AuditLog.timestamp <= date_to)
+    if role:
+        query = query.join(User, AuditLog.user_id == User.user_id).filter(User.roles.ilike(f"%{role}%"))
+    query = query.options(joinedload(AuditLog.user))
+    logs = query.order_by(AuditLog.timestamp.desc()).all()
+
+    now = datetime.now(timezone.utc)
+    active_threshold = timedelta(minutes=2)
+
+    response_logs = []
+    for l in logs:
+        user = l.user
+        is_online = False
+        user_role = "Resident"
+
+        if user:
+            raw_role = getattr(user, "roles", getattr(user, "role", None))
+            user_role = format_role(raw_role)
+
+            last_seen = getattr(user, "last_seen", None)
+            if last_seen:
+                if not last_seen.tzinfo:
+                    last_seen = last_seen.replace(tzinfo=timezone.utc)
+                is_online = (now - last_seen) <= active_threshold
+        else:
+            desc = (l.description or "").lower()
+            if "admin" in desc:
+                user_role = "Super Admin"
+            elif "official" in desc:
+                user_role = "Barangay Official"
+
+        response_logs.append(
+            {
+                "log_id": l.log_id,
+                "user_id": l.user_id,
+                "username": user.username if user else (
+                    f"User #{l.user_id}" if l.user_id is not None else "Unauthenticated"
+                ),
+                "role": user_role,
+                "action_type": l.action_type,
+                "target_table": l.target_table,
+                "description": l.description,
+                "timestamp": str(l.timestamp) if l.timestamp else None,
+                "ip_address": l.ip_address if hasattr(l, 'ip_address') else None,
+                "is_active": is_online,
+            }
+        )
+
+    # Prepare filters for PDF header
+    filters = {}
+    if search:
+        filters['search'] = search
+    if date_from:
+        filters['date_from'] = date_from
+    if date_to:
+        filters['date_to'] = date_to
+    if activity_type:
+        filters['action_type'] = activity_type
+    if role:
+        filters['role'] = role
+
+    # Generate PDF
+    pdf_bytes = generate_system_logs_pdf(response_logs, filters)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="system-logs-{datetime.now().strftime("%Y-%m-%d")}.pdf"'
+        }
+    )

@@ -31,9 +31,13 @@ class AnnouncementDetailScreen extends StatelessWidget {
     }
 
     final attachmentPath = announcement.attachmentPath;
-    final fullAttachmentUrl = (attachmentPath != null && attachmentPath.isNotEmpty)
-        ? '${ApiService.baseUrl}$attachmentPath'
-        : null;
+    final fullAttachmentUrl = attachmentPath == null || attachmentPath.isEmpty
+        ? null
+        : Uri.parse(ApiService.baseUrl)
+            .resolve(attachmentPath.startsWith('/')
+                ? attachmentPath
+                : '/$attachmentPath')
+            .toString();
 
     return Scaffold(
       appBar: AppBar(

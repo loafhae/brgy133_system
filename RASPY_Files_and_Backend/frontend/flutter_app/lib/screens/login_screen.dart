@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import '../services/notification_services.dart';
+import 'forgot_password_screen.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -14,7 +17,15 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
   String _errorMessage = "";
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
@@ -35,27 +46,33 @@ class _LoginScreenState extends State<LoginScreen> {
       await prefs.setString('auth_token', data['access_token']);
       await prefs.setString('username', _usernameController.text.trim());
 
-      final String userRole = data['user']?['roles'] ?? 'resident';
-
-      if (userRole != 'resident') {
-        if (mounted) {
-          setState(() {
-            _errorMessage = 'This app is for residents only. Please use the web portal.';
-          });
+      // Fetch full user profile after login
+      try {
+        final me = await ApiService.get('/auth/me');
+        if (me != null) {
+          final String userRole = me['roles'] ?? 'resident';
+          if (userRole != 'resident') {
+            if (mounted) {
+              setState(() {
+                _errorMessage = 'This app is for residents only. Please use the web portal.';
+              });
+            }
+            return;
+          }
+          await prefs.setString('role', userRole);
+          await prefs.setInt('user_id', me['user_id'] ?? 0);
+          final String? profilePic = me['profile_pic'];
+          if (profilePic != null && profilePic.isNotEmpty) {
+            await prefs.setString('profile_pic', profilePic);
+          }
         }
-        return;
-      }
-
-      final int userId = data['user']?['user_id'] ?? 0;
-      final String? profilePic = data['user']?['profile_pic'];
-
-      await prefs.setString('role', userRole);
-      await prefs.setInt('user_id', userId);
-      if (profilePic != null) {
-        await prefs.setString('profile_pic', profilePic);
+      } catch (_) {
+        // Fallback if /auth/me fails
+        await prefs.setString('role', 'resident');
       }
 
       if (mounted) {
+        await NotificationService.saveTokenAfterLogin();
         Navigator.pushReplacementNamed(context, '/dashboard');
       }
     } catch (e) {
@@ -87,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
               borderRadius: BorderRadius.circular(4),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, 5),
                 ),
@@ -124,11 +141,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 15),
                   TextFormField(
                     controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
                       labelText: 'Password',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.lock),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () {
+                          setState(() => _obscurePassword = !_obscurePassword);
+                        },
+                      ),
                     ),
                     validator: (v) => v!.isEmpty ? 'Please enter password' : null,
                   ),
@@ -144,21 +167,38 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  
+                  // Forgot Password Link
                   GestureDetector(
-                    onTap: () => showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Forgot Password'),
-                        content: const Text('Please contact the barangay office to reset your password.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('OK'),
-                          ),
-                        ],
-                      ),
-                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+                      );
+                    },
                     child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFFc62828), fontWeight: FontWeight.w600)),
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  // Don't have an account? Register link
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                      );
+                    },
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text("Don't have an account? ", style: TextStyle(color: Colors.grey)),
+                        Text(
+                          'Register here',
+                          style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

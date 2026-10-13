@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Select, MenuItem, FormControl, InputLabel, Switch, FormControlLabel,
-  Snackbar, Chip, Divider
+  Snackbar, Chip
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import api from '../api/client';
@@ -15,16 +15,12 @@ export default function Users() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
-  const [roleOpen, setRoleOpen] = useState(false);
   const [editUser, setEditUser] = useState(null);
   
   const [form, setForm] = useState({
     username: '', email: '', password: '', confirmPassword: '', roles: 'official', is_active: true,
   });
 
-  const [selectedRoleToAdd, setSelectedRoleToAdd] = useState('super_admin');
-  const [targetUserForRole, setTargetUserForRole] = useState(null);
-  
   const [snack, setSnack] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -57,9 +53,10 @@ export default function Users() {
         username: form.username,
         email: form.email,
         password: form.password,
-        roles: form.roles,
+        roles: [form.roles],
         is_active: form.is_active,
       };
+
       if (editUser) {
         await api.put(`/users/${editUser.user_id}`, payload);
         setSnack('User updated successfully');
@@ -76,90 +73,10 @@ export default function Users() {
     }
   };
 
-  const handleVerifyUser = async (user_id) => {
-    try {
-      await api.put(`/users/${user_id}/verify`);
-      setSnack('User successfully verified!');
-      fetchUsers();
-    } catch (err) {
-      setSnack('Error verifying user');
-    }
-  };
-
-  // Robust Role Addition ensuring prior roles are fully retained
-  const handleAddRoleToUser = async () => {
-    if (!targetUserForRole) return;
-    try {
-      let currentRoles = [];
-      if (Array.isArray(targetUserForRole.roles)) {
-        currentRoles = [...targetUserForRole.roles];
-      } else if (typeof targetUserForRole.roles === 'string') {
-        currentRoles = targetUserForRole.roles.split(',').map(r => r.trim()).filter(Boolean);
-      } else {
-        currentRoles = [targetUserForRole.role || 'resident'];
-      }
-      
-      if (!currentRoles.includes(selectedRoleToAdd)) {
-        currentRoles.push(selectedRoleToAdd);
-      }
-
-      const payload = {
-        username: targetUserForRole.username,
-        email: targetUserForRole.email || '',
-        roles: currentRoles,
-        is_active: targetUserForRole.is_active ?? true,
-      };
-
-      await api.put(`/users/${targetUserForRole.user_id}`, payload);
-      setSnack(`Successfully added ${selectedRoleToAdd} role!`);
-      
-      setTargetUserForRole({ ...targetUserForRole, roles: currentRoles });
-      fetchUsers();
-    } catch (err) {
-      setSnack('Error assigning role');
-    }
-  };
-
-  const handleRemoveRoleFromUser = async (roleToRemove) => {
-    if (!targetUserForRole) return;
-    try {
-      let currentRoles = [];
-      if (Array.isArray(targetUserForRole.roles)) {
-        currentRoles = [...targetUserForRole.roles];
-      } else if (typeof targetUserForRole.roles === 'string') {
-        currentRoles = targetUserForRole.roles.split(',').map(r => r.trim()).filter(Boolean);
-      } else {
-        currentRoles = [targetUserForRole.role || 'resident'];
-      }
-      
-      if (currentRoles.length <= 1) {
-        setSnack('User must retain at least one role.');
-        return;
-      }
-
-      currentRoles = currentRoles.filter(r => r !== roleToRemove);
-
-      const payload = {
-        username: targetUserForRole.username,
-        email: targetUserForRole.email || '',
-        roles: currentRoles,
-        is_active: targetUserForRole.is_active ?? true,
-      };
-
-      await api.put(`/users/${targetUserForRole.user_id}`, payload);
-      setSnack(`Successfully removed ${roleToRemove} role.`);
-      
-      setTargetUserForRole({ ...targetUserForRole, roles: currentRoles });
-      fetchUsers();
-    } catch (err) {
-      setSnack('Error removing role');
-    }
-  };
-
   const handleDelete = async (id) => {
     try {
       await api.delete(`/users/${id}`);
-      setSnack('User and resident records deleted successfully.');
+      setSnack('User deleted successfully.');
       setDeleteTarget(null);
       fetchUsers();
     } catch (err) {
@@ -169,30 +86,36 @@ export default function Users() {
   };
 
   const filtered = users.filter((u) => {
-    const rolesArr = Array.isArray(u.roles) ? u.roles : [u.roles || u.role || ''];
-    const username = u.username || '';
-    const email = u.email || '';
-
-    const query = `${username} ${email}`.toLowerCase();
+    const rolesArr = Array.isArray(u.roles) ? u.roles : typeof u.roles === 'string' ? u.roles.split(',').map(r => r.trim()) : [u.role || ''];
+    const query = `${u.username || ''} ${u.email || ''}`.toLowerCase();
     const matchSearch = !search || query.includes(search.toLowerCase()) || rolesArr.some(r => r.toLowerCase().includes(search.toLowerCase()));
     const matchRole = !roleFilter || rolesArr.includes(roleFilter);
     return matchSearch && matchRole;
   });
 
   const isProtected = (row) => {
-    const rolesArr = Array.isArray(row?.roles) ? row.roles : [row?.roles || row?.role];
+    const rolesArr = Array.isArray(row?.roles) ? row.roles : typeof row?.roles === 'string' ? row.roles.split(',').map(r => r.trim()) : [row?.role];
     return rolesArr.includes('super_admin') && row?.user_id === currentUser?.user_id;
   };
 
   const openForm = (row) => {
     if (row) {
-      const rVal = Array.isArray(row.roles) ? row.roles[0] : (row.roles || row.role || 'official');
+      let roleVal = 'resident';
+      if (Array.isArray(row.roles)) {
+        roleVal = row.roles[0] || 'resident';
+      } else if (typeof row.roles === 'string' && row.roles.trim() !== '') {
+        const parsed = row.roles.split(',').map(r => r.trim()).filter(Boolean);
+        roleVal = parsed[0] || 'resident';
+      } else if (row.role) {
+        roleVal = row.role;
+      }
+
       setForm({
         username: row.username || '',
         email: row.email || '',
         password: '',
         confirmPassword: '',
-        roles: rVal,
+        roles: roleVal,
         is_active: row.is_active ?? true,
       });
       setEditUser(row);
@@ -205,22 +128,16 @@ export default function Users() {
     setOpen(true);
   };
 
-  const openAddRoleModal = (row) => {
-    setTargetUserForRole(row);
-    setSelectedRoleToAdd('super_admin');
-    setRoleOpen(true);
-  };
-
   const columns = [
     { field: 'user_id', headerName: 'ID', width: 60 },
-    { field: 'username', headerName: 'Username', width: 120 },
-    { field: 'email', headerName: 'Email', width: 160 },
+    { field: 'username', headerName: 'Username', width: 130 },
+    { field: 'email', headerName: 'Email', width: 180 },
     { 
       field: 'roles', 
       headerName: 'Roles', 
-      width: 150, 
+      width: 180, 
       renderCell: (params) => {
-        const rArr = Array.isArray(params.row?.roles) ? params.row.roles : [params.row?.roles || params.row?.role || ''];
+        const rArr = Array.isArray(params.row?.roles) ? params.row.roles : typeof params.row?.roles === 'string' ? params.row.roles.split(',').map(r => r.trim()).filter(Boolean) : [params.row?.role || ''];
         return (
           <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center', height: '100%' }}>
             {rArr.map((r, i) => <Chip key={i} label={r} size="small" color="primary" variant="outlined" />)}
@@ -229,27 +146,9 @@ export default function Users() {
       }
     },
     {
-      field: 'is_approved', headerName: 'Verification', width: 190,
-      renderCell: ({ row }) => (
-        row?.is_approved === 0 ? (
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', height: '100%' }}>
-            <Button size="small" color="success" variant="contained" onClick={() => handleVerifyUser(row.user_id)}>
-              Verify
-            </Button>
-            <Button size="small" color="error" variant="contained" onClick={() => setDeleteTarget(row)}>
-              Deny
-            </Button>
-          </Box>
-        ) : (
-          <Chip label="Verified" size="small" color="success" variant="outlined" />
-        )
-      ),
-    },
-    {
-      field: 'actions', headerName: 'Actions', width: 280,
+      field: 'actions', headerName: 'Actions', width: 200,
       renderCell: ({ row }) => (
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', height: '100%' }}>
-          <Button size="small" color="success" variant="outlined" onClick={() => openAddRoleModal(row)}>Add Role</Button>
           <Button size="small" variant="outlined" disabled={isProtected(row)} onClick={() => openForm(row)}>Edit</Button>
           <Button size="small" color="error" variant="outlined" disabled={isProtected(row)} onClick={() => setDeleteTarget(row)}>Delete</Button>
         </Box>
@@ -286,42 +185,6 @@ export default function Users() {
         disableRowSelectionOnClick 
       />
 
-      {/* Role Management Modal */}
-      <Dialog open={roleOpen} onClose={() => setRoleOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Manage Roles for {targetUserForRole?.username}</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 1.5 }}>
-            Currently Assigned Roles (click [x] to remove):
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-            {targetUserForRole && (Array.isArray(targetUserForRole.roles) ? targetUserForRole.roles : [targetUserForRole.roles || targetUserForRole.role || 'resident']).map((r, idx) => (
-              <Chip 
-                key={idx} 
-                label={r} 
-                color="secondary" 
-                onDelete={() => handleRemoveRoleFromUser(r)} 
-              />
-            ))}
-          </Box>
-          <Divider sx={{ mb: 2 }} />
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Assign an additional role:
-          </Typography>
-          <FormControl fullWidth sx={{ mb: 1 }}>
-            <InputLabel>Select Role to Add</InputLabel>
-            <Select value={selectedRoleToAdd} label="Select Role to Add" onChange={(e) => setSelectedRoleToAdd(e.target.value)}>
-              {AVAILABLE_ROLES.map((role) => (
-                <MenuItem key={role} value={role}>{role}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRoleOpen(false)}>Close</Button>
-          <Button variant="contained" color="success" onClick={handleAddRoleToUser}>Add Role</Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Add / Edit User Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>{editUser ? 'Edit User' : 'Add User'}</DialogTitle>
@@ -333,8 +196,8 @@ export default function Users() {
             <TextField label="Confirm Password" type="password" fullWidth required sx={{ mb: 2 }} value={form.confirmPassword} onChange={(e) => { setForm({ ...form, confirmPassword: e.target.value }); setPasswordError(''); }} error={!!passwordError} helperText={passwordError} />
           )}
           <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Primary Role</InputLabel>
-            <Select value={form.roles} label="Primary Role" onChange={(e) => setForm({ ...form, roles: e.target.value })}>
+            <InputLabel>Role</InputLabel>
+            <Select value={form.roles} label="Role" onChange={(e) => setForm({ ...form, roles: e.target.value })}>
               {AVAILABLE_ROLES.map((role) => (
                 <MenuItem key={role} value={role}>{role}</MenuItem>
               ))}
@@ -362,7 +225,7 @@ export default function Users() {
       <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
-          <Typography>Are you sure you want to DELETE this user? This will permanently remove their user account and associated resident record data.</Typography>
+          <Typography>Are you sure you want to DELETE this user?</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteTarget(null)}>NO</Button>

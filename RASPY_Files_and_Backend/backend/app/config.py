@@ -21,6 +21,10 @@ class Settings(BaseSettings):
 
     DETECTION_CONFIDENCE_THRESHOLD: float = 0.25
     NOTIFICATION_COOLDOWN_SECONDS: int = 300
+    DETECTOR_API_KEY: str = "099fa5df3e91e15a5158ea83d8b8b9571e42ff1328f3b691e09706410d21dc0d"
+
+    SMTP_EMAIL: str = ""
+    SMTP_APP_PASSWORD: str = ""
 
     @property
     def RESOLVED_PORT(self) -> int:

@@ -1,61 +1,59 @@
 import 'package:flutter/foundation.dart';
-import '../models/user.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 
 class AuthProvider with ChangeNotifier {
-  User? _user;
-  bool _loading = false;
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+  
+  // Added back to support screens checking loading state
+  bool get loading => _isLoading; 
+
   String? _error;
-  bool _mustChangePassword = false;
+  String? get error => _error; // Added back to support error messages
 
-  User? get user => _user;
-  bool get loading => _loading;
-  String? get error => _error;
-  bool get mustChangePassword => _mustChangePassword;
-  bool get isLoggedIn => _user != null;
-
-  bool hasRole(String role) => _user?.role == role;
-
-  Future<bool> login(String username, String password) async {
-    _loading = true;
+  Future<bool> login(String email, String password) async {
+    _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final data = await ApiService.post('/auth/login', {
-        'username': username,
+      final response = await ApiService.post('/auth/login', {
+        'email': email,
         'password': password,
-      }, auth: false);
+      });
 
-      await ApiService.saveToken(data['access_token']);
-      _mustChangePassword = data['must_change_password'] ?? false;
-      _user = User(
-        userId: data['user_id'] ?? 0,
-        username: username,
-        role: data['role'] ?? 'resident',
-        mustChangePassword: _mustChangePassword,
-      );
+      if (response != null) {
+        final data = response;
+        final prefs = await SharedPreferences.getInstance();
 
-      _loading = false;
-      notifyListeners();
-      return true;
+        final rawUserId = data['user_id'] ?? data['resident_id'] ?? data['id'];
+        final int userId = rawUserId is int ? rawUserId : int.parse(rawUserId.toString());
+
+        await prefs.setInt('user_id', userId);
+        await prefs.setInt('resident_id', userId);
+        
+        if (data['access_token'] != null) {
+          await prefs.setString('token', data['access_token']);
+        }
+
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
     } catch (e) {
-      _error = e.toString().replaceFirst('Exception: ', '');
-      _loading = false;
-      notifyListeners();
-      return false;
+      _error = e.toString();
+      print('Login error: $e');
     }
-  }
 
-  Future<void> logout() async {
-    await ApiService.clearToken();
-    _user = null;
-    _mustChangePassword = false;
+    _isLoading = false;
     notifyListeners();
+    return false;
   }
 
+  // Added back to satisfy change_password_screen.dart
   Future<bool> changePassword(String currentPassword, String newPassword) async {
-    _loading = true;
+    _isLoading = true;
     _error = null;
     notifyListeners();
 
@@ -64,29 +62,14 @@ class AuthProvider with ChangeNotifier {
         'current_password': currentPassword,
         'new_password': newPassword,
       });
-      _mustChangePassword = false;
-      _loading = false;
+      _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString().replaceFirst('Exception: ', '');
-      _loading = false;
+      _error = e.toString();
+      _isLoading = false;
       notifyListeners();
       return false;
     }
-  }
-
-  Future<void> checkAuth() async {
-    final token = await ApiService.getToken();
-    if (token == null) return;
-
-    try {
-      final data = await ApiService.get('/auth/me');
-      _user = User.fromJson(data);
-      _mustChangePassword = _user!.mustChangePassword;
-    } catch (_) {
-      await ApiService.clearToken();
-    }
-    notifyListeners();
   }
 }

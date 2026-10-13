@@ -27,8 +27,21 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const login = async (username, password) => {
-    const { data } = await api.post('/auth/login', { username, password });
+  const login = async (usernameOrObj, passwordParam) => {
+    let username = usernameOrObj;
+    let password = passwordParam;
+
+    // Safety unwrap if an object or event was passed by accident
+    if (typeof usernameOrObj === 'object' && usernameOrObj !== null) {
+      username = usernameOrObj.username?.username || usernameOrObj.username;
+      password = usernameOrObj.password || passwordParam;
+    }
+
+    const { data } = await api.post('/auth/login', { 
+      username: typeof username === 'string' ? username : username?.username, 
+      password 
+    });
+
     if (data.access_token) {
       localStorage.setItem('token', data.access_token);
       // Fetch fresh user profile right after login
@@ -43,9 +56,21 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('token');
     setUser(null);
   };
-
-  const hasRole = (role) => {
+  
+const hasRole = (role) => {
     if (!user) return false;
+    
+    // Check if user.roles is an array
+    if (Array.isArray(user.roles)) {
+      return user.roles.includes(role);
+    }
+    
+    // Check if user.roles is a string (e.g. "official" or "super_admin")
+    if (typeof user.roles === 'string') {
+      return user.roles.split(',').map((r) => r.trim()).includes(role);
+    }
+    
+    // Fallback to singular user.role property if it exists
     return user.role === role;
   };
 

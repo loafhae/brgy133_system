@@ -10,7 +10,7 @@ from app.models.settings import SystemSetting
 from app.config import settings as app_settings
 from app.paths import BACKUP_DIR, UPLOAD_DIR
 
-router = APIRouter(prefix="/api/backup", tags=["backup"])
+router = APIRouter(prefix="/backup", tags=["backup"])
 
 MYSQLDUMP_PATHS = [
     r"C:\xampp\mysql\bin\mysqldump.exe",

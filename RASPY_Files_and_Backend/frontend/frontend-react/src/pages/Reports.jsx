@@ -12,7 +12,7 @@ export default function Reports() {
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [snack, setSnack] = useState('');
-  const [form, setForm] = useState({ report_type: 'announcement', start_date: '', end_date: '' });
+  const [form, setForm] = useState({ title: '', report_type: 'announcement', start_date: '', end_date: '', file_format: 'pdf' });
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -27,14 +27,16 @@ export default function Reports() {
     setGenerating(true);
     try {
       const typeLabels = { announcement: 'Announcements', feedback: 'Feedback', activity: 'Activity Logs', detection: 'Detection Logs' };
+      const reportTitle = form.title.trim() || `${typeLabels[form.report_type] || form.report_type} Report`;
       await api.post('/reports/generate', {
-        title: `${typeLabels[form.report_type] || form.report_type} Report`,
+        title: reportTitle,
         report_type: form.report_type,
         start_date: form.start_date || null,
         end_date: form.end_date || null,
-        file_format: 'pdf',
+        file_format: form.file_format,
       });
       setSnack('Report generated successfully');
+      setForm({ ...form, title: '' });
       fetch();
     } catch (err) {
       const d = err.response?.data?.detail;
@@ -62,6 +64,11 @@ export default function Reports() {
     { value: 'detection', label: 'Detection Logs' },
   ];
 
+  const formatOptions = [
+    { value: 'pdf', label: 'PDF' },
+    { value: 'docx', label: 'DOCX' },
+  ];
+
   const formatDate = (iso) => {
     if (!iso) return '—';
     try { return new Date(iso).toLocaleDateString(); } catch { return iso; }
@@ -77,10 +84,20 @@ export default function Reports() {
         </Typography>
         <Divider sx={{ mb: 2 }} />
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <TextField size="small" label="Report Title (optional)" value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder="e.g. September 2026 Announcements"
+            sx={{ minWidth: 250 }} />
           <FormControl size="small" sx={{ minWidth: 180 }}>
             <InputLabel>Report Type</InputLabel>
             <Select value={form.report_type} label="Report Type" onChange={(e) => setForm({ ...form, report_type: e.target.value })}>
               {reportTypes.map((t) => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>Format</InputLabel>
+            <Select value={form.file_format} label="Format" onChange={(e) => setForm({ ...form, file_format: e.target.value })}>
+              {formatOptions.map((f) => <MenuItem key={f.value} value={f.value}>{f.label}</MenuItem>)}
             </Select>
           </FormControl>
           <TextField size="small" type="date" label="Start Date" value={form.start_date}
@@ -91,7 +108,7 @@ export default function Reports() {
             slotProps={{ inputLabel: { shrink: true } }} />
           <Button variant="contained" onClick={generate} disabled={generating}>
             {generating ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
-            Generate PDF
+            Generate {form.file_format === 'docx' ? 'DOCX' : 'PDF'}
           </Button>
         </Box>
       </Paper>
@@ -110,6 +127,7 @@ export default function Reports() {
                 <TableRow>
                   <TableCell>Title</TableCell>
                   <TableCell>Type</TableCell>
+                  <TableCell>Format</TableCell>
                   <TableCell>Date Range</TableCell>
                   <TableCell>Created</TableCell>
                   <TableCell align="right">Actions</TableCell>
@@ -120,6 +138,14 @@ export default function Reports() {
                   <TableRow key={r.report_id}>
                     <TableCell sx={{ fontWeight: 500 }}>{r.title}</TableCell>
                     <TableCell><Chip label={r.report_type} size="small" variant="outlined" /></TableCell>
+                    <TableCell>
+                      <Chip
+                        label={r.file_format?.toUpperCase() || 'PDF'}
+                        size="small"
+                        color={r.file_format === 'docx' ? 'primary' : 'error'}
+                        variant="filled"
+                      />
+                    </TableCell>
                     <TableCell>{formatDate(r.start_date)} — {formatDate(r.end_date)}</TableCell>
                     <TableCell>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</TableCell>
                     <TableCell align="right">

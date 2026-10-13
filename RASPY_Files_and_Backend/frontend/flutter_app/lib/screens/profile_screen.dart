@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+const ProfileScreen({super.key}); // 👈 Clean super parameter style
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -51,7 +51,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: false,
-      withData: kIsWeb, // Ensures raw bytes are loaded in browser memory
+      withData: kIsWeb,
     );
     if (result == null || result.files.isEmpty) return;
 
@@ -61,7 +61,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Map<String, dynamic> data;
 
       if (kIsWeb) {
-        // --- Web Upload (uses bytes and strict content type) ---
         final fileBytes = result.files.single.bytes;
         final fileName = result.files.single.name;
 
@@ -69,7 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           throw Exception("Could not read file data.");
         }
 
-        final uri = Uri.parse('${ApiService.baseUrl}/api/auth/upload-profile-pic');
+        final uri = Uri.parse('${ApiService.baseUrl}/auth/upload-profile-pic');
         final request = http.MultipartRequest('POST', uri);
 
         final token = await ApiService.getToken();
@@ -84,7 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'file',
           fileBytes,
           filename: fileName,
-          contentType: mediaType, // Tells FastAPI this is an image
+          contentType: mediaType,
         ));
 
         final streamed = await request.send();
@@ -96,7 +95,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           throw Exception('Upload failed with status ${response.statusCode}');
         }
       } else {
-        // --- Native Mobile Upload (Android / iOS) ---
         final file = File(result.files.single.path!);
         data = await ApiService.postMultipart(
           '/auth/upload-profile-pic',
@@ -155,7 +153,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       radius: 50,
                       backgroundColor: Colors.grey[200],
                       backgroundImage: _profilePicUrl != null
-                          ? NetworkImage('${ApiService.baseUrl}$_profilePicUrl')
+                          ? NetworkImage('${ApiService.baseUrl.replaceAll('/api', '')}$_profilePicUrl')
                           : null,
                       child: _profilePicUrl == null
                           ? const Icon(Icons.person, size: 50, color: Colors.grey)

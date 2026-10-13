@@ -1,49 +1,42 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
 from app.database import get_db
-from app.models.user import User, Resident
-from app.services.auth_service import hash_password
+from app.dependencies import require_role
+from app.models.user import User
+import bcrypt
 
-router = APIRouter(prefix="/api/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["Users"])
 
-@router.get("/")
-def get_users(db: Session = Depends(get_db)):
-    users = db.query(User).all()
-    result = []
-    for u in users:
-        res_profile = db.query(Resident).filter(Resident.user_id == u.user_id).first()
-        
-        raw_roles = getattr(u, "roles", "resident")
-        if isinstance(raw_roles, str):
-            roles_list = [r.strip() for r in raw_roles.split(",") if r.strip()]
-        else:
-            roles_list = raw_roles if isinstance(raw_roles, list) else [str(raw_roles)]
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-        result.append({
-            "user_id": u.user_id,
-            "username": u.username,
-            "email": u.email if u.email else "",
-            "roles": roles_list,
-            "is_active": getattr(u, "is_active", True),
-            "is_approved": getattr(u, "is_approved", 1),
-            "first_name": res_profile.first_name if res_profile else "",
-            "last_name": res_profile.last_name if res_profile else "",
-        })
-    return result
+@router.get("")
+def get_users(db: Session = Depends(get_db), current_user: User = Depends(require_role("super_admin"))):
+    return db.query(User).all()
 
-@router.put("/{user_id}/verify")
-def verify_user(user_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.user_id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    user.is_approved = 1
+@router.post("")
+def create_user(body: dict, db: Session = Depends(get_db), current_user: User = Depends(require_role("super_admin"))):
+    hashed_pwd = hash_password(body.get("password", "default123"))
+    roles_input = body.get("roles", ["resident"])
+    if isinstance(roles_input, list):
+        roles_str = ",".join([str(r).strip() for r in roles_input if str(r).strip()])
+    else:
+        roles_str = str(roles_input).strip()
+
+    new_user = User(
+        username=body.get("username"),
+        email=body.get("email"),
+        password=hashed_pwd,
+        roles=roles_str,
+        is_active=body.get("is_active", True)
+    )
+    db.add(new_user)
     db.commit()
-    return {"message": "User successfully verified and approved."}
+    db.refresh(new_user)
+    return {"message": "User created successfully.", "user_id": new_user.user_id}
 
 @router.put("/{user_id}")
-def update_user(user_id: int, body: dict, db: Session = Depends(get_db)):
+def update_user(user_id: int, body: dict, db: Session = Depends(get_db), current_user: User = Depends(require_role("super_admin"))):
     user = db.query(User).filter(User.user_id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -53,15 +46,13 @@ def update_user(user_id: int, body: dict, db: Session = Depends(get_db)):
     if "email" in body:
         user.email = body["email"]
     if "roles" in body:
-        incoming_roles = body["roles"]
-        if isinstance(incoming_roles, list):
-            user.roles = ",".join([str(r).strip() for r in incoming_roles if str(r).strip()])
+        incoming = body["roles"]
+        if isinstance(incoming, list):
+            user.roles = ",".join([str(r).strip() for r in incoming if str(r).strip()])
         else:
-            user.roles = str(incoming_roles).strip()
+            user.roles = str(incoming).strip()
     if "is_active" in body:
         user.is_active = body["is_active"]
-    if "is_approved" in body:
-        user.is_approved = body["is_approved"]
     if "password" in body and body["password"] and body["password"].strip() != "":
         user.password = hash_password(body["password"])
 
@@ -70,16 +61,10 @@ def update_user(user_id: int, body: dict, db: Session = Depends(get_db)):
     return {"message": "User updated successfully."}
 
 @router.delete("/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role("super_admin"))):
     user = db.query(User).filter(User.user_id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Automatically clean up and remove the linked resident profile data
-    resident = db.query(Resident).filter(Resident.user_id == user_id).first()
-    if resident:
-        db.delete(resident)
-        
     db.delete(user)
     db.commit()
-    return {"message": "User and associated resident data successfully deleted."}
+    return {"message": "User deleted successfully."}

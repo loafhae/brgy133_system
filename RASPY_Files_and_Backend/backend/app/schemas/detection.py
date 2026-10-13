@@ -19,6 +19,7 @@ class DetectionLogResponse(BaseModel):
     notification_status: str
     camera_id: Optional[int] = None
     camera_name: Optional[str] = None
+    event_type: Optional[str] = None
 
     class Config:
         from_attributes = True

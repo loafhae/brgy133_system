@@ -13,7 +13,7 @@ from app.models.reports import Report
 from app.schemas.report import ReportCreate, ReportResponse
 from app.services.report_service import generate_report
 
-router = APIRouter(prefix="/api/reports", tags=["reports"])
+router = APIRouter(prefix="/reports", tags=["reports"])
 
 
 @router.get("", response_model=list[dict])

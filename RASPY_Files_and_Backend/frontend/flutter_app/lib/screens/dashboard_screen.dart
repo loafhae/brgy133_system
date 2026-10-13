@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../models/announcement.dart';
-import '../services/notification_services.dart';
+
 
 class _ActionItem {
   final IconData icon;
@@ -29,6 +29,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<dynamic> _announcements = [];
   bool _loadingAnnouncements = true;
   Timer? _truckTimer;
+  Timer? _announcementTimer;
 
   @override
   void initState() {
@@ -36,26 +37,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _loadSession();
     _fetchAnnouncements();
     _pollTruckStatus();
-
-    NotificationService.initialize(context);
+    _pollAnnouncements();
   }
 
   @override
   void dispose() {
     _truckTimer?.cancel();
+    _announcementTimer?.cancel();
     super.dispose();
   }
 
   Future<void> _loadSession() async {
     final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString('username') ?? 'Resident';
-    final pic = prefs.getString('profile_pic');
+    var name = prefs.getString('username') ?? 'Resident';
+    var pic = prefs.getString('profile_pic');
     if (mounted) {
       setState(() {
         _residentName = name;
         _profilePicUrl = pic;
       });
     }
+    // Fetch fresh profile from API
+    try {
+      final me = await ApiService.get('/auth/me');
+      if (me != null && mounted) {
+        final freshPic = me['profile_pic'];
+        final freshName = me['username'] ?? name;
+        await prefs.setString('username', freshName);
+        if (freshPic != null && freshPic is String && freshPic.isNotEmpty) {
+          await prefs.setString('profile_pic', freshPic);
+        }
+        setState(() {
+          _residentName = freshName;
+          _profilePicUrl = freshPic ?? pic;
+        });
+      }
+    } catch (_) {}
   }
 
   void _pollTruckStatus() {
@@ -84,6 +101,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (_) {
       if (mounted) setState(() => _loadingAnnouncements = false);
     }
+  }
+
+  void _pollAnnouncements() {
+    _announcementTimer = Timer.periodic(const Duration(seconds: 20), (_) async {
+      try {
+        final data = await ApiService.getList('/announcements?published_only=true');
+        if (!mounted) return;
+        setState(() { _announcements = data; });
+      } catch (_) {}
+    });
   }
 
   Future<void> _handleLogout() async {
@@ -132,12 +159,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildSectionHeader(IconData icon, String title, {VoidCallback? onViewAll}) {
+  Widget _buildSectionHeader(IconData icon, String title, {VoidCallback? onViewAll, bool centerTitle = false}) {
     return Row(
       children: [
         Icon(icon, size: 20, color: _primaryRed),
         const SizedBox(width: 8),
-        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF333333))),
+        if (centerTitle)
+          Expanded(child: Center(child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF333333)))))
+        else
+          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF333333))),
         const Spacer(),
         if (onViewAll != null)
           TextButton(
@@ -268,41 +298,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       );
     }
-    return Column(
-      children: _announcements.take(4).map((a) => Card(
-        elevation: 1,
-        margin: const EdgeInsets.only(bottom: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _announcements.length > 4 ? 4 : _announcements.length,
+      itemBuilder: (context, index) {
+        final a = _announcements[index];
+        return Card(
+          elevation: 1,
+          margin: const EdgeInsets.only(bottom: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
             onTap: () => Navigator.pushNamed(
-            context,
-            '/announcement-detail',
-            arguments: a is Announcement ? a : Announcement.fromJson(Map<String, dynamic>.from(a)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(a['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF333333))),
-                if (a['content'] != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(a['content'], maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-                  ),
-                if (a['date_posted'] != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(_formatDate(a['date_posted']),
-                      style: TextStyle(fontSize: 11, color: Colors.grey[400])),
-                  ),
-              ],
+              context,
+              '/announcement-detail',
+              arguments: a is Announcement ? a : Announcement.fromJson(Map<String, dynamic>.from(a)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(a['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF333333))),
+                  if (a['content'] != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(a['content'], maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                    ),
+                  if (a['date_posted'] != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(_formatDate(a['date_posted']),
+                          style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
-      )).toList(),
+        );
+      },
     );
   }
 
@@ -329,7 +365,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: CircleAvatar(
                 backgroundColor: Colors.white,
                 backgroundImage: _profilePicUrl != null
-                    ? NetworkImage('${ApiService.baseUrl}$_profilePicUrl')
+                    ? NetworkImage('${ApiService.baseUrl.replaceAll('/api', '')}$_profilePicUrl')
                     : null,
                 child: _profilePicUrl == null ? const Icon(Icons.person, size: 40, color: _primaryRed) : null,
               ),
@@ -360,7 +396,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 }),
                 _drawerItem(Icons.person, 'My Profile', () {
                   Navigator.pop(context);
-                  Navigator.pushNamed(context, '/profile');
+                  Navigator.pushNamed(context, '/profile').then((_) => _loadSession());
+                }),
+                _drawerItem(Icons.settings, 'Settings', () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/settings').then((_) => _loadSession());
                 }),
                 const SizedBox(height: 20),
                 const Divider(),
