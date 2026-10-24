@@ -1,0 +1,8 @@
+[
+  {
+    "id": 1,
+    "name": "Cam 1 - Main Street Entrance",
+    "source": "rtsp://<username>:<password>@<camera-ip>:554/Streaming/Channels/101",
+    "roi_coords": [[100, 400], [800, 350], [850, 950], [80, 980]]
+  }
+]

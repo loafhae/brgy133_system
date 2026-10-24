@@ -1,8 +1,9 @@
 import json
 import time
 from datetime import datetime
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, status
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query, status
 from app.services.websocket_manager import manager
+from app.dependencies import is_valid_detector_authorization, require_detector_key
 from app.database import SessionLocal
 from app.models.detection import DetectionLog, Notification
 from app.models.user import User, Resident
@@ -220,7 +221,7 @@ def process_detection_event(payload, client_ip=None):
                 action_type="truck_present",
                 target_table="tbl_DetectionLog",
                 target_id=log.log_id,
-                description=f"Truck detected at {camera_name} (confidence={confidence})",
+                description="A vehicle detection event was recorded.",
                 ip_address=client_ip,
             )
             db.add(audit)
@@ -303,7 +304,7 @@ def process_detection_event(payload, client_ip=None):
                 action_type="truck_departed",
                 target_table="tbl_DetectionLog",
                 target_id=log.log_id,
-                description=f"Truck departed from {camera_name}",
+                description="A vehicle departed event was recorded.",
                 ip_address=client_ip,
             )
             db.add(audit)
@@ -400,16 +401,15 @@ async def verify_ws_token(token: str | None) -> bool:
         return False
     try:
         payload = decode_access_token(token)
-        return payload.get("sub") is not None
+        return bool(payload and payload.get("sub") is not None)
     except Exception:
         return False
 
 
 @router.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket, token: str | None = Query(None)):
-    # Optional or strict verification depending on your app rules
-    # If it requires authentication, close with 403 if invalid:
-    if token and not await verify_ws_token(token):
+    detector_client = is_valid_detector_authorization(ws.headers.get("authorization"))
+    if not detector_client and not await verify_ws_token(token):
         await ws.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
@@ -426,6 +426,10 @@ async def websocket_endpoint(ws: WebSocket, token: str | None = Query(None)):
                 payload = json.loads(data)
                 event_type = payload.get("event_type")
                 if event_type:
+                    if not detector_client:
+                        await ws.close(code=status.WS_1008_POLICY_VIOLATION)
+                        manager.disconnect(ws)
+                        return
                     broadcast = process_detection_event(payload, client_ip=client_ip)
                     if broadcast:
                         await manager.broadcast(broadcast)
@@ -437,8 +441,7 @@ async def websocket_endpoint(ws: WebSocket, token: str | None = Query(None)):
 
 @router.websocket("/ws/feedback-updates")
 async def websocket_feedback_endpoint(ws: WebSocket, token: str | None = Query(None)):
-    # Authenticate feedback updates socket
-    if token and not await verify_ws_token(token):
+    if not await verify_ws_token(token):
         await ws.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
@@ -451,7 +454,7 @@ async def websocket_feedback_endpoint(ws: WebSocket, token: str | None = Query(N
 
 
 @router.post("/detection/fire")
-async def fire_event(payload: dict):
+async def fire_event(payload: dict, _: None = Depends(require_detector_key)):
     """REST fallback to trigger detection events (updates camera_states)."""
     event_type = payload.get("event_type")
     if not event_type:

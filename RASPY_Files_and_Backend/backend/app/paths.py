@@ -2,6 +2,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+SNAPSHOT_DIR = BASE_DIR.parent / "snapshots"
 UPLOAD_DIR = BASE_DIR / "uploads"
 DETECTION_UPLOAD_DIR = UPLOAD_DIR / "detections"
 ANNOUNCEMENT_UPLOAD_DIR = UPLOAD_DIR / "announcements"

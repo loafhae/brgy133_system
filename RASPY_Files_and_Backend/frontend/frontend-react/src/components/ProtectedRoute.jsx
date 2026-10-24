@@ -4,7 +4,6 @@ import { Box, CircularProgress } from '@mui/material';
 
 export default function ProtectedRoute({ roles: allowedRoles }) {
   const { user, loading } = useAuth();
-  const token = localStorage.getItem('token');
 
   if (loading) {
     return (
@@ -14,12 +13,12 @@ export default function ProtectedRoute({ roles: allowedRoles }) {
     );
   }
 
-  if (!token && !user) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
   // If specific roles are required, safely normalize and verify user roles
-  if (allowedRoles && allowedRoles.length > 0 && user) {
+  if (allowedRoles && allowedRoles.length > 0) {
     let userRoles = [];
     if (Array.isArray(user.roles)) {
       userRoles = user.roles;

@@ -26,8 +26,8 @@ export default function ResidentActivityLogs() {
   useEffect(() => {
     fetchLogs(true);
     const interval = setInterval(() => {
-      fetchLogs(false);
-    }, 10000);
+      if (!document.hidden) fetchLogs(false);
+    }, 20000);
 
     return () => clearInterval(interval);
   }, [fetchLogs]);
@@ -87,7 +87,25 @@ export default function ResidentActivityLogs() {
         />
       ),
     },
-    { field: 'action_type', headerName: 'Activity', width: 170 },
+    {
+      field: 'action_type',
+      headerName: 'Activity',
+      width: 170,
+      valueFormatter: (value) => {
+        if (!value) return '';
+        const v = String(value).toLowerCase();
+        if (v.includes('login')) return 'Signed In';
+        if (v.includes('logout')) return 'Signed Out';
+        if (v.includes('feedback')) return 'Feedback';
+        if (v.includes('password')) return 'Security Update';
+        if (v.includes('truck') || v.includes('detection')) return 'Vehicle Detection';
+        if (v.includes('announcement')) return 'Announcement';
+        if (v.includes('resident')) return 'Resident Account';
+        return String(value)
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase());
+      },
+    },
     { field: 'description', headerName: 'Description', flex: 1 },
     {
       field: 'timestamp',

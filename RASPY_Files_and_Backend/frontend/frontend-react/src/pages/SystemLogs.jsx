@@ -36,7 +36,9 @@ export default function SystemLogs() {
 
   useEffect(() => {
     fetchLogs(true);
-    const interval = setInterval(() => fetchLogs(false), 10000);
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchLogs(false);
+    }, 20000);
     return () => clearInterval(interval);
   }, [fetchLogs]);
 
@@ -133,8 +135,10 @@ export default function SystemLogs() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search username, action, description..."
-            InputProps={{
-              startAdornment: <InputAdornment position="start"><FilterList fontSize="small" /></InputAdornment>,
+            slotProps={{
+              input: {
+                startAdornment: <InputAdornment position="start"><FilterList fontSize="small" /></InputAdornment>,
+              }
             }}
           />
           <TextField
@@ -144,6 +148,7 @@ export default function SystemLogs() {
             sx={{ minWidth: 180 }}
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
             InputLabelProps={{ shrink: true }}
           />
           <TextField
@@ -153,6 +158,7 @@ export default function SystemLogs() {
             sx={{ minWidth: 180 }}
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
             InputLabelProps={{ shrink: true }}
           />
           <TextField

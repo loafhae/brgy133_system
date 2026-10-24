@@ -4,8 +4,8 @@ from datetime import datetime
 
 
 class FeedbackCreate(BaseModel):
-    subject: str
-    content: str
+    subject: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1)
 
 
 class FeedbackUpdate(BaseModel):

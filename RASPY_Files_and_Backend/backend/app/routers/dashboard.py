@@ -16,5 +16,8 @@ def get_dashboard_stats(db: Session = Depends(get_db), current_user: User = Depe
     return {
         "total_users": total_users,
         "total_residents": total_residents,
-        "total_feedback": total_feedback
+        "total_feedback": total_feedback,
+        "user_count": total_users,
+        "resident_count": total_residents,
+        "pending_feedback": total_feedback,
     }

@@ -25,6 +25,24 @@ def format_role(role_val: Optional[str]) -> str:
     return "Resident"
 
 
+from app.middleware.ip_logger import _friendly_description
+
+
+def _clean_description(action_type: str, description: Optional[str]) -> str:
+    raw = description or ""
+    # If description is missing or contains raw technical artifacts, return simple friendly text
+    if (
+        not raw
+        or any(k in raw for k in ["/api/", "HTTP ", "confidence=", "attempted username:", "Cam ", "id=", "ABNORMAL API"])
+        or action_type in [
+            "truck_present", "truck_departed", "login_failed", "login",
+            "session_logout", "admin_create_user", "rate_limit_exceeded"
+        ]
+    ):
+        return _friendly_description(action_type, action_type.endswith("_failed") or "failed" in raw.lower())
+    return raw
+
+
 @router.get("")
 def get_my_activity(
     page: int = Query(1, ge=1),
@@ -46,7 +64,7 @@ def get_my_activity(
             "action_type": l.action_type,
             "target_table": l.target_table,
             "target_id": l.target_id,
-            "description": l.description,
+            "description": _clean_description(l.action_type, l.description),
             "timestamp": str(l.timestamp) if l.timestamp else None,
         }
         for l in logs
@@ -122,7 +140,7 @@ def get_all_activity(
                 "role": user_role,
                 "action_type": l.action_type,
                 "target_table": l.target_table,
-                "description": l.description,
+                "description": _clean_description(l.action_type, l.description),
                 "timestamp": str(l.timestamp) if l.timestamp else None,
                 "ip_address": l.ip_address if hasattr(l, 'ip_address') else None,
                 "is_active": is_online,
@@ -197,7 +215,7 @@ def export_system_logs(
                 "role": user_role,
                 "action_type": l.action_type,
                 "target_table": l.target_table,
-                "description": l.description,
+                "description": _clean_description(l.action_type, l.description),
                 "timestamp": str(l.timestamp) if l.timestamp else None,
                 "ip_address": l.ip_address if hasattr(l, 'ip_address') else None,
                 "is_active": is_online,

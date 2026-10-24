@@ -1,79 +1,55 @@
 import os
+import ipaddress
+import json
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from fastapi import FastAPI, Depends, HTTPException, Header, Request
+from fastapi import FastAPI, Depends, HTTPException, Request, status
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 import firebase_admin
 from firebase_admin import credentials
 
-from app.config import settings
+from app.config import settings, validate_deployment_settings
 from app.database import engine, Base, get_db
-from app.paths import UPLOAD_DIR
+from app.paths import ANNOUNCEMENT_UPLOAD_DIR, DETECTION_UPLOAD_DIR, PROFILE_PIC_DIR
 from app.models import (
     User, Resident,
     DetectionLog, Notification,
     Announcement, Feedback, Report,
-    SystemSetting, AuditLog,
+    SystemSetting, AuditLog, UserSession,
 )
-from app.services.auth_service import hash_password
-from app.dependencies import get_current_user
+from app.services.resident_migration import migrate_resident_schema, migrate_gender_schema
+from app.dependencies import get_current_user, require_detector_key, session_cookie_name
 from app.middleware.ip_logger import IPLoggerMiddleware
+from app.middleware.rate_limiter import RateLimiterMiddleware
 
 from app.routers import (
     auth, users, residents, announcements,
     feedback, dashboard, reports, activity,
-    settings as settings_router, detection, websocket, backup, roles,
+    settings as settings_router, detection, websocket, backup,
 )
 
 
-def ensure_database_exists():
-    db_name = settings.DATABASE_NAME
-    resolved_port = settings.RESOLVED_PORT
-    root_url = (
-        f"mysql+pymysql://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}"
-        f"@{settings.DATABASE_HOST}:{resolved_port}/mysql"
-    )
-    temp_engine = create_engine(root_url, pool_pre_ping=True)
+def check_database_connection():
     try:
-        with temp_engine.connect() as conn:
-            conn.execute(text(f"CREATE DATABASE IF NOT EXISTS `{db_name}`"))
-            conn.commit()
-            print(f"[OK] Database '{db_name}' is ready on port {resolved_port}.")
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            print(f"[OK] Database '{settings.DATABASE_NAME}' is ready.")
     except Exception as e:
-        print(f"[ERROR] Could not auto-create database: {e}")
-        print(f"[INFO] Make sure XAMPP MariaDB is running on port {resolved_port}.")
-        raise SystemExit(1)
-    finally:
-        temp_engine.dispose()
-
-
-def seed_default_data():
-    db = next(get_db())
-    try:
-        admin_exists = db.query(User).filter(User.roles.like("%super_admin%")).first()
-        if not admin_exists:
-            new_admin = User(
-                username="admin",
-                email="admin@brgy133.com",
-                password=hash_password("admin123"),
-                roles="super_admin",
-                is_approved=1,
-            )
-            db.add(new_admin)
-            db.commit()
-    except Exception as e:
-        print(f"Data seeding skipped or handled: {e}")
-    finally:
-        db.close()
+        raise RuntimeError(
+            f"Could not connect to database '{settings.DATABASE_NAME}'. "
+            "Verify the database exists and the configured account has access."
+        ) from e
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    ensure_database_exists()
+    validate_deployment_settings()
+    check_database_connection()
     Base.metadata.create_all(bind=engine)
 
     try:
@@ -104,7 +80,23 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
-    seed_default_data()
+    migrate_resident_schema(engine)
+    migrate_gender_schema(engine)
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE tbl_feedback ADD COLUMN `attachments` TEXT NULL"))
+            conn.commit()
+    except Exception:
+        pass
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE tbl_detectionlog ADD COLUMN `event_type` VARCHAR(50) NULL"))
+            conn.commit()
+    except Exception:
+        pass
+
     yield
 
 
@@ -112,13 +104,64 @@ app = FastAPI(
     title="Vision-Trak Backend",
     description="Multi-Platform Barangay Announcement and Garbage Collection Notifier API",
     version="1.0.0",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
     lifespan=lifespan,
 )
 
-# Open CORS configuration to support dynamic Flutter Web dev ports
+# Security Headers Middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",", 1)[0].strip().lower()
+    cf_visitor = request.headers.get("cf-visitor")
+    try:
+        cloudflare_scheme = json.loads(cf_visitor).get("scheme") if cf_visitor else None
+    except (json.JSONDecodeError, AttributeError):
+        cloudflare_scheme = None
+    is_cf = bool(request.headers.get("cf-ray"))
+    is_https = request.url.scheme == "https" or forwarded_proto == "https" or cloudflare_scheme == "https" or is_cf
+
+    hostname = request.url.hostname or ""
+    is_local = hostname.lower() in {"localhost", "testserver"}
+    try:
+        is_local = is_local or ipaddress.ip_address(hostname).is_private or ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        pass
+    if settings.REQUIRE_HTTPS and not is_https and not is_local:
+        return RedirectResponse(
+            url=str(request.url.replace(scheme="https")),
+            status_code=status.HTTP_308_PERMANENT_REDIRECT,
+        )
+
+    response = await call_next(request)
+    if (
+        response.status_code == status.HTTP_401_UNAUTHORIZED
+        and request.cookies.get(session_cookie_name())
+        and request.url.path != "/api/auth/login"
+    ):
+        response.delete_cookie(
+            key=session_cookie_name(),
+            httponly=True,
+            secure=settings.SESSION_COOKIE_SECURE,
+            samesite="lax",
+            path="/",
+        )
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Pragma"] = "no-cache"
+    if is_https:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000"
+    return response
+
+# Hardened CORS policy (Single-Origin & Local Development)
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origins=settings.CORS_ORIGINS_LIST,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -127,14 +170,29 @@ app.add_middleware(
 # IP Logger middleware for audit logging
 app.add_middleware(IPLoggerMiddleware)
 
-app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+# Rate Limiter & Abuse Prevention middleware
+app.add_middleware(RateLimiterMiddleware)
 
-_snapshots_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "snapshots")
-if not os.path.exists(_snapshots_dir):
-    os.makedirs(_snapshots_dir, exist_ok=True)
-app.mount("/snapshots", StaticFiles(directory=_snapshots_dir), name="snapshots")
+for _upload_name, _upload_dir in (
+    ("announcements", ANNOUNCEMENT_UPLOAD_DIR),
+    ("detections", DETECTION_UPLOAD_DIR),
+    ("profile_pics", PROFILE_PIC_DIR),
+):
+    app.mount(
+        f"/uploads/{_upload_name}",
+        StaticFiles(directory=str(_upload_dir)),
+        name=f"uploads-{_upload_name}",
+    )
 
-# All routers use prefix="/api"
+_legacy_profile_dir = PROFILE_PIC_DIR.parent / "profiles"
+if _legacy_profile_dir.exists():
+    app.mount(
+        "/uploads/profiles",
+        StaticFiles(directory=str(_legacy_profile_dir)),
+        name="uploads-profiles",
+    )
+
+# All routers u1se prefix="/api"
 app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(residents.router, prefix="/api")
@@ -147,7 +205,11 @@ app.include_router(settings_router.router, prefix="/api")
 app.include_router(detection.router, prefix="/api")
 app.include_router(websocket.router, prefix="/api")
 app.include_router(backup.router, prefix="/api")
-app.include_router(roles.router, prefix="/api")
+
+
+@app.get("/healthz")
+def health_check():
+    return {"status": "ok"}
 
 
 @app.post("/api/users/heartbeat")
@@ -164,13 +226,9 @@ def user_heartbeat(
 async def receive_garbage_truck_notification(
     payload: dict,
     request: Request,
-    authorization: str = Header(None),
     db: Session = Depends(get_db),
+    _: None = Depends(require_detector_key),
 ):
-    token = authorization.replace("Bearer ", "") if authorization else ""
-    if token != settings.DETECTOR_API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid detector API key")
-
     print(f"[Garbage-Truck] Payload received: {payload}")
 
     status_val = payload.get("status", "").upper()
@@ -210,6 +268,42 @@ async def receive_garbage_truck_notification(
     return {"status": "ok", "event_type": event_type}
 
 
-@app.get("/")
-def root():
-    return {"message": "Vision-Trak Backend is running", "docs": "/docs"}
+# ---- FRONTEND SPA SERVING & FALLBACK ----
+_dist_dir = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "frontend",
+    "frontend-react",
+    "dist",
+)
+
+if os.path.exists(_dist_dir):
+    _assets_dir = os.path.join(_dist_dir, "assets")
+    if os.path.exists(_assets_dir):
+        app.mount("/assets", StaticFiles(directory=_assets_dir), name="frontend-assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str, request: Request):
+        # Exclude reserved backend paths
+        if full_path.startswith(("api", "uploads", "snapshots", "docs", "openapi.json", "redoc")):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource Not Found")
+
+        if not full_path and ("text/html" not in request.headers.get("accept", "") or "application/json" in request.headers.get("accept", "")):
+            return {"message": "Vision-Trak Backend is running", "health": "/healthz"}
+
+        if full_path:
+            dist_root = os.path.realpath(_dist_dir)
+            file_path = os.path.realpath(os.path.join(dist_root, full_path))
+            if os.path.commonpath([dist_root, file_path]) == dist_root and os.path.isfile(file_path):
+                return FileResponse(file_path)
+
+        index_file = os.path.join(_dist_dir, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(
+                index_file,
+                headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+            )
+        return {"message": "Vision-Trak Unified Gateway is running", "health": "/healthz"}
+else:
+    @app.get("/")
+    def root():
+        return {"message": "Vision-Trak Backend is running", "health": "/healthz"}

@@ -18,7 +18,6 @@ class ReportResponse(BaseModel):
     report_type: str
     start_date: Optional[date] = None
     end_date: Optional[date] = None
-    file_path: Optional[str] = None
     created_by: Optional[int] = None
     created_at: Optional[datetime] = None
 

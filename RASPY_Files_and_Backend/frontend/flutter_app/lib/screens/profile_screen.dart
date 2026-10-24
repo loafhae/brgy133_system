@@ -9,13 +9,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 
 class ProfileScreen extends StatefulWidget {
-const ProfileScreen({super.key}); // 👈 Clean super parameter style
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  static const Color _primaryGreen = Color(0xFF587D46);
+  static const Color _canvas = Color(0xFFF8FAFC);
+  static const Color _cardBorder = Color(0xFFE2E8F0);
+  static const Color _textDark = Color(0xFF0F172A);
+
   String _username = '';
   String _role = '';
   String? _profilePicUrl;
@@ -79,12 +84,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final isPng = fileName.toLowerCase().endsWith('.png');
         final mediaType = MediaType('image', isPng ? 'png' : 'jpeg');
 
-        request.files.add(http.MultipartFile.fromBytes(
-          'file',
-          fileBytes,
-          filename: fileName,
-          contentType: mediaType,
-        ));
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            fileBytes,
+            filename: fileName,
+            contentType: mediaType,
+          ),
+        );
 
         final streamed = await request.send();
         final response = await http.Response.fromStream(streamed);
@@ -112,16 +119,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (data['profile_pic'] != null) {
         await prefs.setString('profile_pic', data['profile_pic']);
       }
-      
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile picture updated!')),
+        const SnackBar(
+          content: Text('Profile photo updated successfully!'),
+          backgroundColor: _primaryGreen,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Upload failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -130,74 +140,168 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('My Profile')),
+      backgroundColor: _canvas,
+      appBar: AppBar(
+        title: const Text(
+          'My Profile',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        backgroundColor: Colors.white,
+        foregroundColor: _textDark,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: _cardBorder, height: 1),
+        ),
+      ),
       body: Center(
-        child: Container(
-          width: 400,
-          padding: const EdgeInsets.all(30),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(4),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 5)),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GestureDetector(
-                onTap: _uploading ? null : _pickAndUpload,
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.grey[200],
-                      backgroundImage: _profilePicUrl != null
-                          ? NetworkImage('${ApiService.baseUrl.replaceAll('/api', '')}$_profilePicUrl')
-                          : null,
-                      child: _profilePicUrl == null
-                          ? const Icon(Icons.person, size: 50, color: Colors.grey)
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFc62828),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(maxWidth: 420),
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _cardBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: _uploading ? null : _pickAndUpload,
+                  child: Stack(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
+                          border: Border.all(
+                            color: _primaryGreen.withValues(alpha: 0.35),
+                            width: 2.5,
+                          ),
                         ),
-                        child: _uploading
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                        child: CircleAvatar(
+                          radius: 54,
+                          backgroundColor: const Color(0xFFF1F5F9),
+                          backgroundImage: _profilePicUrl != null
+                              ? NetworkImage(
+                                  '${ApiService.baseUrl.replaceAll('/api', '')}$_profilePicUrl',
+                                )
+                              : null,
+                          child: _profilePicUrl == null
+                              ? const Icon(
+                                  Icons.person_rounded,
+                                  size: 54,
+                                  color: _primaryGreen,
+                                )
+                              : null,
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 4,
+                        right: 4,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: _primaryGreen,
+                            shape: BoxShape.circle,
+                          ),
+                          child: _uploading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.camera_alt_rounded,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  _username.isNotEmpty ? _username : 'Barangay Resident',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: _textDark,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _primaryGreen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.verified_rounded,
+                        size: 14,
+                        color: _primaryGreen,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _role.replaceAll('_', ' ').toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: _primaryGreen,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Divider(color: _cardBorder, height: 1),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryGreen,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                  ],
+                    onPressed: _uploading ? null : _pickAndUpload,
+                    icon: const Icon(Icons.camera_alt_rounded, size: 18),
+                    label: Text(
+                      _uploading ? 'Uploading...' : 'Change Photo',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Text(_username, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFc62828).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(_role.replaceAll('_', ' ').toUpperCase(),
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFc62828))),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _uploading ? null : _pickAndUpload,
-                  icon: const Icon(Icons.camera_alt),
-                  label: Text(_uploading ? 'Uploading...' : 'Change Photo'),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

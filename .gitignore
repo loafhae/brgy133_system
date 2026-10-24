@@ -3,3 +3,8 @@
 **/.pytest_cache/
 **/serviceAccountKey.json
 /RASPY_Files_and_Backend/backend/private_feedback_uploads/
+*.db
+*.exe
+tunnel_*.txt
+.env
+.env.*

@@ -1,5 +1,10 @@
 @echo off
+rem ================================================================================
+rem  DEV_ONLY.bat  -  LOCAL DEVELOPMENT LAUNCHER  (NOT for barangay production use)
+rem  Use SETUP.bat + START.bat for the actual barangay deployment.
+rem ================================================================================
 setlocal
+set "APP_ENV=development"
 set "ROOT_DIR=%~dp0"
 set "BACKEND_DIR=%ROOT_DIR%backend"
 set "FRONTEND_DIR=%ROOT_DIR%frontend\frontend-react"
@@ -138,12 +143,12 @@ echo.
 echo Starting the backend and React admin portal in separate windows...
 echo Backend API: http://127.0.0.1:8000
 echo API docs:    http://127.0.0.1:8000/docs
-echo Admin portal: http://127.0.0.1:5173
+echo Web Portal (Admin, Officials & Residents): http://127.0.0.1:5173
 echo.
 echo MariaDB/MySQL must already be running and configured for the backend.
 echo This launcher does not install, start, or modify the database.
 start "Vision-Trak Backend" /D "%BACKEND_DIR%" "%VENV_PYTHON%" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir "%BACKEND_DIR%\app"
-start "Vision-Trak Admin Portal" /D "%FRONTEND_DIR%" cmd.exe /k "npm run dev -- --host 127.0.0.1"
+start "Vision-Trak Web Portal" /D "%FRONTEND_DIR%" cmd.exe /k "npm run dev -- --host 127.0.0.1"
 if defined START_ALL goto start_flutter
 goto menu
 
@@ -177,3 +182,4 @@ echo [ERROR] One or more services could not be started. Review the message above
 pause
 set "START_ALL="
 goto menu
+

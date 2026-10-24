@@ -7,15 +7,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db
 from app.main import app
 from app.services.auth_service import hash_password, create_access_token
 from app.models import User, Admin, Official, Resident, Feedback, Announcement, DetectionLog, Notification, SystemSetting, AuditLog
-from datetime import datetime, date
+from app.models import UserSession
+from datetime import datetime, date, timezone
+import uuid
 import pytest
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def override_get_db():
@@ -52,15 +58,27 @@ def _create_user(db, username, password, role, **kwargs):
     db.refresh(user)
     return user
 
+def _create_user_token(db, user):
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    session = UserSession(
+        id=str(uuid.uuid4()),
+        user_id=user.user_id,
+        created_at=now,
+        last_activity_at=now,
+    )
+    db.add(session)
+    db.commit()
+    return create_access_token({"sub": str(user.user_id), "role": user.roles, "sid": session.id})
+
 @pytest.fixture
 def super_admin_token(db):
     user = _create_user(db, "admin", "admin123", "super_admin")
-    return create_access_token({"sub": str(user.user_id), "role": user.roles})
+    return _create_user_token(db, user)
 
 @pytest.fixture
 def official_token(db):
     user = _create_user(db, "official1", "official123", "official")
-    return create_access_token({"sub": str(user.user_id), "role": user.roles})
+    return _create_user_token(db, user)
 
 @pytest.fixture
 def resident_token(db):
@@ -69,12 +87,12 @@ def resident_token(db):
                          birthday=date(1990, 1, 1), address="Barangay 133, Tondo")
     db.add(resident)
     db.commit()
-    return create_access_token({"sub": str(user.user_id), "role": user.roles})
+    return _create_user_token(db, user)
 
 @pytest.fixture
 def inactive_user_token(db):
     user = _create_user(db, "inactive", "inactive123", "resident", is_active=False)
-    return create_access_token({"sub": str(user.user_id), "role": user.roles})
+    return _create_user_token(db, user)
 
 def auth_header(token):
     return {"Authorization": f"Bearer {token}"}

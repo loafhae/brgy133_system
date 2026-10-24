@@ -7,12 +7,12 @@ def test_inference():
     in0 = torch.rand(1, 3, 640, 640, dtype=torch.float)
     out = []
 
-    with ncnn.Net() as net:
+    with ncnn.Net() as net:  # type: ignore[attr-defined]
         net.load_param("best_ncnn_model/model.ncnn.param")
         net.load_model("best_ncnn_model/model.ncnn.bin")
 
         with net.create_extractor() as ex:
-            ex.input("in0", ncnn.Mat(in0.squeeze(0).numpy()).clone())
+            ex.input("in0", ncnn.Mat(in0.squeeze(0).numpy()).clone())  # type: ignore[attr-defined]
 
             _, out0 = ex.extract("out0")
             out.append(torch.from_numpy(np.array(out0)).unsqueeze(0))

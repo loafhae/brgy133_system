@@ -22,7 +22,9 @@ class FeedbackProvider with ChangeNotifier {
     try {
       final data = await ApiService.getList('/feedback');
       _feedbacks = data
-          .map((e) => FeedbackModel.fromJson(e as Map<String, dynamic>))
+          .map(
+            (e) => FeedbackModel.fromJson(Map<String, dynamic>.from(e as Map)),
+          )
           .toList();
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');
@@ -45,6 +47,8 @@ class FeedbackProvider with ChangeNotifier {
       await ApiService.submitFeedback(subject, content, files);
       _submitting = false;
       notifyListeners();
+      // Automatically refresh the tickets list after submission
+      await fetchMyFeedback();
       return true;
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');

@@ -31,6 +31,8 @@ class Activity {
     if (value is int) return value;
     if (value is num) return value.toInt();
     if (value is String) return int.parse(value);
-    throw FormatException('Expected an activity ID to be an integer, got $value');
+    throw FormatException(
+      'Expected an activity ID to be an integer, got $value',
+    );
   }
 }

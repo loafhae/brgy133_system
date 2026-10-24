@@ -1,7 +1,14 @@
 venv/
 .env
+.env.*
+!.env.example
 uploads/
 backups/
+private_feedback_uploads/
+test.db
+latest_otp.txt
+test.html
+app/serviceAccountKey.json
 __pycache__/
 *.pyc
 *.pyo

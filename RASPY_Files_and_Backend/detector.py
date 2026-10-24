@@ -1,5 +1,18 @@
+from __future__ import annotations
+
 import os
 import json
+import time
+import threading
+import queue
+import socket
+import socketserver
+from http import server
+from collections import deque
+import urllib.request
+import urllib.error
+from typing import Any, TYPE_CHECKING
+
 try:
     import cv2
 except Exception:
@@ -11,27 +24,20 @@ except Exception:
     np = None
 
 try:
-    import ncnn
+    import ncnn  # type: ignore[import-untyped]
 except Exception:
     ncnn = None
-import time
-import threading
-import queue
-import socket
-import socketserver
-from http import server
+
 try:
-    from shapely.geometry import Point, Polygon
+    from shapely.geometry import Point, Polygon  # type: ignore[import-untyped]
 except Exception:
     Point = None
     Polygon = None
-from collections import deque
+
 try:
-    import websocket
+    import websocket  # type: ignore[import-untyped]
 except Exception:
     websocket = None
-import urllib.request
-import urllib.error
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -41,7 +47,8 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 # SERVER_URL = change this to your PC's IP address
 # Find it by running: ipconfig  (look for IPv4)
 # ==========================================
-SERVER_URL = "wss://oriental-winston-installation-fed.trycloudflare.com/ws"
+SERVER_URL = os.environ.get("DETECTOR_SERVER_URL", "ws://127.0.0.1:8000/api/ws")
+DETECTOR_API_KEY = os.environ.get("DETECTOR_API_KEY", "")
 SNAPSHOT_DIR = os.path.join(script_dir, "snapshots")
 
 _ws = None
@@ -126,6 +133,12 @@ def _get_ws():
                 _ws = None
 
         if _ws is None:
+            if not DETECTOR_API_KEY:
+                rate_limit_log(
+                    "missing_detector_api_key",
+                    "[WS] DETECTOR_API_KEY is not configured; detector events are disabled."
+                )
+                return None
             # Build list of candidate WebSocket URLs to try
             candidates = [SERVER_URL]
             
@@ -138,21 +151,25 @@ def _get_ws():
             
             # Add localhost candidates
             if is_remote:
-                candidates.append("ws://127.0.0.1:3000/ws")
-                candidates.append("ws://127.0.0.1:8000/ws")
+                candidates.append("ws://127.0.0.1:8000/api/ws")
+                candidates.append("ws://127.0.0.1:3000/api/ws")
             else:
                 # If primary is localhost but on port 3000, add port 8000 candidate
                 if ":3000" in SERVER_URL:
-                    candidates.append("ws://127.0.0.1:8000/ws")
+                    candidates.append("ws://127.0.0.1:8000/api/ws")
                 elif ":8000" in SERVER_URL:
-                    candidates.append("ws://127.0.0.1:3000/ws")
+                    candidates.append("ws://127.0.0.1:3000/api/ws")
 
             for url in candidates:
                         if not WS_AVAILABLE:
                             # websocket-client not installed; skip websocket connect
                             continue
                         try:
-                            _ws = websocket.create_connection(url, timeout=5.0)
+                            _ws = websocket.create_connection(  # type: ignore[union-attr]
+                                url,
+                                timeout=5.0,
+                                header=[f"Authorization: Bearer {DETECTOR_API_KEY}"],
+                            )
                             print(f"[WS] Connected successfully to: {url}")
                             return _ws
                         except Exception:
@@ -168,8 +185,20 @@ def _get_ws():
 
 def http_send(payload):
     """Send payload via HTTP POST as fallback."""
-    # Convert ws:// or wss:// to http:// or https:// and /ws to /api/detection/fire
-    http_url = SERVER_URL.replace("wss://", "https://").replace("ws://", "http://").replace("/ws", "/api/detection/fire")
+    if not DETECTOR_API_KEY:
+        rate_limit_log(
+            "missing_detector_api_key",
+            "[HTTP] DETECTOR_API_KEY is not configured; detector events are disabled."
+        )
+        return False
+    # Convert ws:// or wss:// to http:// or https:// and /ws or /api/ws to /api/detection/fire
+    base_http = SERVER_URL.replace("wss://", "https://").replace("ws://", "http://")
+    if "/api/ws" in base_http:
+        http_url = base_http.replace("/api/ws", "/api/detection/fire")
+    elif "/ws" in base_http:
+        http_url = base_http.replace("/ws", "/api/detection/fire")
+    else:
+        http_url = base_http.rstrip("/") + "/api/detection/fire"
     candidates = [http_url]
     
     if ":3000" in http_url:
@@ -190,7 +219,10 @@ def http_send(payload):
             req = urllib.request.Request(
                 url,
                 data=json.dumps(payload).encode('utf-8'),
-                headers={'Content-Type': 'application/json'},
+                headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {DETECTOR_API_KEY}',
+                },
                 method='POST'
             )
             with urllib.request.urlopen(req, timeout=5.0) as response:
@@ -396,7 +428,7 @@ if not os.path.exists(param_path) or not os.path.exists(bin_path):
     raise FileNotFoundError("Please make sure your model.ncnn.param and model.ncnn.bin exist in 'yolov8n_ncnn_model' directory.")
 
 print("Initializing Raw NCNN Net...")
-net = ncnn.Net()
+net = ncnn.Net()  # type: ignore[union-attr]
 
 # Configure NCNN to utilize multiple CPU threads on the Pi 5
 net.opt.num_threads = 4
@@ -495,54 +527,46 @@ class BoundingBoxTracker:
 # Class 7 corresponds to "truck" in the default YOLOv8 COCO dataset.
 TARGET_CLASS_ID = 7  
 
-# [Inference] [Unverified] Testing with local video file sources.
-# Here we map all three camera channels to the same local "04.mp4" file, 
-# but configure distinct, independent ROI coordinates for each virtual camera.
-# In production, replace self.source strings with RTSP IP camera links: "rtsp://..."
-camera_configs = [
+# [Inference] Camera configuration loader.
+# Checks for 'cameras.json' in the script directory to enable easy CCTV/RTSP camera management in production.
+_default_camera_configs = [
     {
         "id": 1,
-        "name": "Cam 1 - Delivery Area",
-        "source": "04.mp4",  # Mapped to video source file
-        "roi_coords": [(6, 370), (912, 303), (927, 1066), (6, 1074)],  # ROI specific to Cam 1
-        "tracker": BoundingBoxTracker(alpha=0.35, max_missing_frames=12),
-        "truck_in_zone": False,
-        "consecutive_present": 0,
-        "consecutive_missing": 0,
-        "scaled_roi_coords": None,
-        "roi_polygon": None,
-        "roi_min_x": None, "roi_min_y": None, "roi_max_x": None, "roi_max_y": None,
-        "scale_x": None, "scale_y": None,
-        "reader": None,
-        # Performance optimization tracking variables
-        "prev_roi_gray": None,
-        "last_inference_time": 0.0,
-        "last_raw_detections": []
+        "name": "Cam 1 - Main Street Entrance",
+        "source": "04.mp4",
+        "roi_coords": [(6, 370), (912, 303), (927, 1066), (6, 1074)],
     },
     {
         "id": 2,
-        "name": "Cam 2 - Side Loading",
-        "source": "02.mp4",  # Mapped to video source file
-        "roi_coords": [(100, 400), (800, 350), (850, 950), (80, 980)],  # ROI specific to Cam 2
-        "tracker": BoundingBoxTracker(alpha=0.35, max_missing_frames=12),
-        "truck_in_zone": False,
-        "consecutive_present": 0,
-        "consecutive_missing": 0,
-        "scaled_roi_coords": None,
-        "roi_polygon": None,
-        "roi_min_x": None, "roi_min_y": None, "roi_max_x": None, "roi_max_y": None,
-        "scale_x": None, "scale_y": None,
-        "reader": None,
-        # Performance optimization tracking variables
-        "prev_roi_gray": None,
-        "last_inference_time": 0.0,
-        "last_raw_detections": []
+        "name": "Cam 2 - Side Loading Area",
+        "source": "02.mp4",
+        "roi_coords": [(100, 400), (800, 350), (850, 950), (80, 980)],
     },
     {
         "id": 3,
-        "name": "Cam 3 - BackBay Area",
-        "source": "03.mp4",  # Mapped to video source file
-        "roi_coords": [(1141, 193), (1563, 195), (1539, 417), (1327, 564), (1050, 502)],  # ROI specific to Cam 1
+        "name": "Cam 3 - Corner / Waste Collection Point",
+        "source": "03.mp4",
+        "roi_coords": [(1141, 193), (1563, 195), (1539, 417), (1327, 564), (1050, 502)],
+    }
+]
+
+def _build_camera_entry(item, default_id):
+    cid = item.get("id", default_id)
+    cname = item.get("name", f"Cam {cid}")
+    csource = item.get("source", "04.mp4")
+    # Resolve relative local file paths against script_dir
+    if isinstance(csource, str) and not csource.startswith(("rtsp://", "http://", "https://", "rtsps://")):
+        if not os.path.isabs(csource):
+            local_src = os.path.join(script_dir, csource)
+            if os.path.exists(local_src):
+                csource = local_src
+    raw_roi = item.get("roi_coords", [(10, 10), (100, 10), (100, 100), (10, 100)])
+    roi_coords = [tuple(p) for p in raw_roi]
+    return {
+        "id": cid,
+        "name": cname,
+        "source": csource,
+        "roi_coords": roi_coords,
         "tracker": BoundingBoxTracker(alpha=0.35, max_missing_frames=12),
         "truck_in_zone": False,
         "consecutive_present": 0,
@@ -552,12 +576,28 @@ camera_configs = [
         "roi_min_x": None, "roi_min_y": None, "roi_max_x": None, "roi_max_y": None,
         "scale_x": None, "scale_y": None,
         "reader": None,
-        # Performance optimization tracking variables
         "prev_roi_gray": None,
         "last_inference_time": 0.0,
         "last_raw_detections": []
     }
-]
+
+camera_configs = []
+_cameras_json_path = os.path.join(script_dir, "cameras.json")
+if os.path.exists(_cameras_json_path):
+    try:
+        with open(_cameras_json_path, "r", encoding="utf-8") as f:
+            _loaded_cams = json.load(f)
+        if isinstance(_loaded_cams, list) and len(_loaded_cams) > 0:
+            for i, c in enumerate(_loaded_cams):
+                camera_configs.append(_build_camera_entry(c, i + 1))
+            print(f"[OK] Successfully loaded {len(camera_configs)} camera(s) from cameras.json")
+    except Exception as e:
+        print(f"[WARN] Could not load cameras.json ({e}). Using default configurations.")
+
+if not camera_configs:
+    for i, c in enumerate(_default_camera_configs):
+        camera_configs.append(_build_camera_entry(c, i + 1))
+
 
 # --- DEBOUNCE STATE MACHINE THRESHOLDS ---
 # Calibrated for ~10 FPS per camera with 1s scan dwell across 9 cameras
@@ -617,8 +657,8 @@ def letterbox(img, new_shape=(640, 640), color=(114, 114, 114)):
     if shape[::-1] != new_unpad:  # Resize
         img = cv2.resize(img, new_unpad, interpolation=cv2.INTER_LINEAR)
     
-    top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
-    left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+    top, bottom = round(dh - 0.1), round(dh + 0.1)
+    left, right = round(dw - 0.1), round(dw + 0.1)
     
     img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
     return img, r, (left, top)
@@ -769,7 +809,7 @@ def _inference_worker(configs, q, pending, stop_event):
         try:
             letterboxed_img, scale_ratio, (pad_left, pad_top) = letterbox(raw_frame, (INPUT_SIZE, INPUT_SIZE))
             rgb_img = cv2.cvtColor(letterboxed_img, cv2.COLOR_BGR2RGB)
-            mat_in = ncnn.Mat.from_pixels(rgb_img.tobytes(), ncnn.Mat.PixelType.PIXEL_RGB, INPUT_SIZE, INPUT_SIZE)
+            mat_in = ncnn.Mat.from_pixels(rgb_img.tobytes(), ncnn.Mat.PixelType.PIXEL_RGB, INPUT_SIZE, INPUT_SIZE)  # type: ignore[union-attr]
             mean_vals = [0.0, 0.0, 0.0]
             norm_vals = [1/255.0, 1/255.0, 1/255.0]
             mat_in.substract_mean_normalize(mean_vals, norm_vals)
@@ -784,7 +824,7 @@ def _inference_worker(configs, q, pending, stop_event):
                     center_x_disp = ((x_min + x_max) / 2) * cam["scale_x"]
                     bottom_y_disp = y_max * cam["scale_y"]
                     if cam["roi_min_x"] <= center_x_disp <= cam["roi_max_x"] and cam["roi_min_y"] <= bottom_y_disp <= cam["roi_max_y"]:
-                        truck_point = Point(center_x_disp, bottom_y_disp)
+                        truck_point = Point(center_x_disp, bottom_y_disp)  # type: ignore[misc]
                         if cam["roi_polygon"].contains(truck_point):
                             raw_detections.append((box, score))
                 cam["last_raw_detections"] = raw_detections
@@ -804,7 +844,7 @@ print("Running multi-camera monitoring system using raw NCNN inference...")
 # ==========================================
 class MJPEGStreamer:
     """Serves processed frames as an MJPEG HTTP stream, replacing cv2.imshow."""
-    def __init__(self, camera_configs, shared_state, host='0.0.0.0', port=8080):
+    def __init__(self, camera_configs, shared_state, host='127.0.0.1', port=8080):
         self.frame = None
         self.lock = threading.Lock()
         self.event = threading.Event()
@@ -912,7 +952,7 @@ class MJPEGStreamer:
                 # Method 2: query hostname addresses
                 for info in socket.getaddrinfo(socket.gethostname(), None):
                     ip = info[4][0]
-                    if info[0] == socket.AF_INET and not ip.startswith('127.'):
+                    if info[0] == socket.AF_INET and not str(ip).startswith('127.'):
                         ips.append(ip)
             except:
                 pass
@@ -947,7 +987,7 @@ class MJPEGStreamer:
 
 def _main():
     active_idx = 0
-    focused_idx = None
+    focused_idx: int | None = None
     shared_state = {"active_idx": active_idx, "focused_idx": focused_idx, "fps": 0.0}
     last_cam_idx = -1
     cam_switch_time = time.time()
@@ -972,6 +1012,10 @@ def _main():
     fps = 0.0
     last_stream_time = None
     last_frame_ids = {}
+    frame = None
+    detected_trucks = []
+    has_motion = False
+    raw_detections = []
 
     try:
         while True:
@@ -993,6 +1037,10 @@ def _main():
             current_frame_id = cam["reader"].frame_id
             is_new_frame = current_frame_id != last_frame_ids.get(current_idx, -1)
             last_frame_ids[current_idx] = current_frame_id
+
+            if not is_new_frame:
+                time.sleep(0.001)
+                continue
             
             if cam["roi_polygon"] is None:
                 orig_h, orig_w = raw_frame.shape[:2]
@@ -1000,7 +1048,7 @@ def _main():
                 cam["scale_y"] = DISPLAY_H / orig_h if orig_h > 0 else 1.0
                 scaled_roi = [(int(x * cam["scale_x"]), int(y * cam["scale_y"])) for x, y in cam["roi_coords"]]
                 cam["scaled_roi_coords"] = scaled_roi
-                cam["roi_polygon"] = Polygon(scaled_roi)
+                cam["roi_polygon"] = Polygon(scaled_roi)  # type: ignore[misc]
                 cam["roi_min_x"], cam["roi_min_y"], cam["roi_max_x"], cam["roi_max_y"] = cam["roi_polygon"].bounds
                 _mx1, _my1 = int(cam["roi_min_x"]), int(cam["roi_min_y"])
                 _mx2, _my2 = int(cam["roi_max_x"]), int(cam["roi_max_y"])
@@ -1022,148 +1070,143 @@ def _main():
                 cam["tracker"].targets.clear()
                 notify_camera_scan_start(cam["id"], cam["name"])
                 
-            if is_new_frame:
-                frame = cv2.resize(raw_frame, (DISPLAY_W, DISPLAY_H))
-                orig_h, orig_w = raw_frame.shape[:2]
-                current_time_sec = time.time()
-                time_since_last_inf = current_time_sec - cam["last_inference_time"]
-                run_ncnn = False
-                has_motion = True
-                cam["has_motion"] = True
-                if time_since_last_inf >= INFERENCE_INTERVAL:
-                    has_motion = detect_motion_in_roi(frame, cam)
-                    cam["has_motion"] = has_motion
-                    if has_motion:
-                        run_ncnn = True
-                    else:
-                        raw_detections = cam["last_raw_detections"]
-                else:
-                    raw_detections = cam["last_raw_detections"]
-                    has_motion = len(raw_detections) > 0
-                    cam["has_motion"] = has_motion
-                if run_ncnn:
-                    if first_frame_diagnostic:
-                        # First inference runs synchronously to print model diagnostic
-                        letterboxed_img, scale_ratio, (pad_left, pad_top) = letterbox(raw_frame, (INPUT_SIZE, INPUT_SIZE))
-                        rgb_img = cv2.cvtColor(letterboxed_img, cv2.COLOR_BGR2RGB)
-                        mat_in = ncnn.Mat.from_pixels(rgb_img.tobytes(), ncnn.Mat.PixelType.PIXEL_RGB, INPUT_SIZE, INPUT_SIZE)
-                        mean_vals = [0.0, 0.0, 0.0]
-                        norm_vals = [1/255.0, 1/255.0, 1/255.0]
-                        mat_in.substract_mean_normalize(mean_vals, norm_vals)
-                        ex = net.create_extractor()
-                        ex.input("in0", mat_in)
-                        ret_code, mat_out = ex.extract("out0")
-                        print("\n--- NCNN MODEL DIAGNOSTIC ---")
-                        pipes_used = getattr(net.opt, 'use_vulkan_compute', False)
-                        gpu_count = getattr(ncnn, 'get_gpu_count', lambda: 0)()
-                        if pipes_used and gpu_count > 0:
-                            print(f"[Vulkan] GPU count: {gpu_count} — compute active")
-                        elif pipes_used and gpu_count == 0:
-                            print("[Vulkan] Flag set but no Vulkan devices found — running on CPU")
-                        else:
-                            print("[Vulkan] GPU acceleration disabled — running on CPU")
-                        print(f"Extraction ret_code: {ret_code} (0 means success)")
-                        if ret_code != 0:
-                            print("[WARNING] Extraction failed!")
-                        print(f"Output Mat shape -> Channels: {mat_out.c}, Height: {mat_out.h}, Width: {mat_out.w}")
-                        raw_shape = np.array(mat_out).shape
-                        print(f"Numpy representation shape: {raw_shape}")
-                        print("-----------------------------\n")
-                        first_frame_diagnostic = False
-                        if ret_code == 0:
-                            raw_boxes, raw_scores = decode_yolov8_output(mat_out, scale_ratio, pad_left, pad_top, orig_w, orig_h)
-                            raw_detections = []
-                            for box, score in zip(raw_boxes, raw_scores):
-                                x_min, y_min, x_max, y_max = box
-                                center_x_disp = ((x_min + x_max) / 2) * cam["scale_x"]
-                                bottom_y_disp = y_max * cam["scale_y"]
-                                if cam["roi_min_x"] <= center_x_disp <= cam["roi_max_x"] and cam["roi_min_y"] <= bottom_y_disp <= cam["roi_max_y"]:
-                                    truck_point = Point(center_x_disp, bottom_y_disp)
-                                    if cam["roi_polygon"].contains(truck_point):
-                                        raw_detections.append((box, score))
-                            cam["last_raw_detections"] = raw_detections
-                            cam["last_inference_time"] = current_time_sec
-                        else:
-                            raw_detections = cam["last_raw_detections"]
-                    else:
-                        # Offload to background worker — use last known detections
-                        if not inference_pending[current_idx]:
-                            inference_pending[current_idx] = True
-                            inference_queue.put((current_idx, raw_frame))
-                        raw_detections = cam["last_raw_detections"]
-                        
-                tracked_trucks = cam["tracker"].update(raw_detections)
-                truck_in_zone_this_frame = False
-                detected_trucks = []
-                for t in tracked_trucks:
-                    x_min, y_min, x_max, y_max = t["box"]
-                    score = t["score"]
-                    x_min_disp = x_min * cam["scale_x"]
-                    y_min_disp = y_min * cam["scale_y"]
-                    x_max_disp = x_max * cam["scale_x"]
-                    y_max_disp = y_max * cam["scale_y"]
-                    center_x = (x_min_disp + x_max_disp) / 2
-                    bottom_y = y_max_disp
-                    if cam["roi_min_x"] <= center_x <= cam["roi_max_x"] and cam["roi_min_y"] <= bottom_y <= cam["roi_max_y"]:
-                        truck_point = Point(center_x, bottom_y)
-                        is_inside = cam["roi_polygon"].contains(truck_point)
-                    else:
-                        is_inside = False
-                    if is_inside:
-                        truck_in_zone_this_frame = True
-                        box_color = (0, 255, 0)
-                    else:
-                        box_color = (0, 165, 255)
-                    detected_trucks.append({
-                        "box": [int(x_min_disp), int(y_min_disp), int(x_max_disp), int(y_max_disp)],
-                        "anchor": (int(center_x), int(bottom_y)),
-                        "color": box_color,
-                        "score": score
-                    })
-                    
-                if truck_in_zone_this_frame:
-                    if cam["consecutive_present"] < REQUIRED_PRESENT:
-                        cam["consecutive_present"] += 1
-                    cam["consecutive_missing"] = 0
-                else:
-                    if cam["consecutive_missing"] < REQUIRED_MISSING:
-                        cam["consecutive_missing"] += 1
-                    cam["consecutive_present"] = 0
-                    
-                if not cam["truck_in_zone"]:
-                    if cam["consecutive_present"] >= REQUIRED_PRESENT:
-                        best_conf = max((t["score"] for t in detected_trucks), default=0.0)
-                        snap_path = save_snapshot(frame, cam["name"])
-                        print(f"\n[!] TRUCK DETECTED - Locking focus on: {cam['name']} (Confirmed across {REQUIRED_PRESENT} frames, conf={best_conf:.2f})")
-                        notify_truck_present(cam["id"], cam["name"], best_conf, snap_path)
-                        cam["truck_in_zone"] = True
-                        focused_idx = current_idx
-                        shared_state["focused_idx"] = focused_idx
-                else:
-                    if cam["consecutive_missing"] >= REQUIRED_MISSING:
-                        last_conf = max((t["score"] for t in detected_trucks), default=0.0)
-                        print(f"\n[-] TRUCK DEPARTED - Unlocking focus from: {cam['name']} (Confirmed missing across {REQUIRED_MISSING} frames)")
-                        notify_truck_departed(cam["id"], cam["name"], last_conf)
-                        cam["truck_in_zone"] = False
-                        cam["consecutive_missing"] = 0
-                        focused_idx = None
-                        shared_state["focused_idx"] = focused_idx
-                        active_idx = (current_idx + 1) % len(camera_configs)
-                        shared_state["active_idx"] = active_idx
-                        
-                if focused_idx is None:
-                    if time.time() - cam_switch_time >= SCAN_DURATION:
-                        if has_motion or truck_in_zone_this_frame or cam["consecutive_present"] > 0:
-                            cam_switch_time = time.time()
-                        else:
-                            prev_idx = active_idx
-                            active_idx = (active_idx + 1) % len(camera_configs)
-                            shared_state["active_idx"] = active_idx
-                            if active_idx != prev_idx:
-                                notify_camera_switched(prev_idx, camera_configs[prev_idx]["name"])
+            frame = cv2.resize(raw_frame, (DISPLAY_W, DISPLAY_H))
+            orig_h, orig_w = raw_frame.shape[:2]
+            current_time_sec = time.time()
+            time_since_last_inf = current_time_sec - cam["last_inference_time"]
+            run_ncnn = False
+            raw_detections = cam["last_raw_detections"]
+            has_motion = True
+            cam["has_motion"] = True
+            if time_since_last_inf >= INFERENCE_INTERVAL:
+                has_motion = detect_motion_in_roi(frame, cam)
+                cam["has_motion"] = has_motion
+                if has_motion:
+                    run_ncnn = True
             else:
-                time.sleep(0.001)
-            
+                has_motion = len(raw_detections) > 0
+                cam["has_motion"] = has_motion
+            if run_ncnn:
+                if first_frame_diagnostic:
+                    # First inference runs synchronously to print model diagnostic
+                    letterboxed_img, scale_ratio, (pad_left, pad_top) = letterbox(raw_frame, (INPUT_SIZE, INPUT_SIZE))
+                    rgb_img = cv2.cvtColor(letterboxed_img, cv2.COLOR_BGR2RGB)
+                    mat_in = ncnn.Mat.from_pixels(rgb_img.tobytes(), ncnn.Mat.PixelType.PIXEL_RGB, INPUT_SIZE, INPUT_SIZE)  # type: ignore[union-attr]
+                    mean_vals = [0.0, 0.0, 0.0]
+                    norm_vals = [1/255.0, 1/255.0, 1/255.0]
+                    mat_in.substract_mean_normalize(mean_vals, norm_vals)
+                    ex = net.create_extractor()
+                    ex.input("in0", mat_in)
+                    ret_code, mat_out = ex.extract("out0")
+                    print("\n--- NCNN MODEL DIAGNOSTIC ---")
+                    pipes_used = getattr(net.opt, 'use_vulkan_compute', False)
+                    gpu_count = getattr(ncnn, 'get_gpu_count', lambda: 0)()
+                    if pipes_used and gpu_count > 0:
+                        print(f"[Vulkan] GPU count: {gpu_count} — compute active")
+                    elif pipes_used and gpu_count == 0:
+                        print("[Vulkan] Flag set but no Vulkan devices found — running on CPU")
+                    else:
+                        print("[Vulkan] GPU acceleration disabled — running on CPU")
+                    print(f"Extraction ret_code: {ret_code} (0 means success)")
+                    if ret_code != 0:
+                        print("[WARNING] Extraction failed!")
+                    print(f"Output Mat shape -> Channels: {mat_out.c}, Height: {mat_out.h}, Width: {mat_out.w}")
+                    raw_shape = np.array(mat_out).shape
+                    print(f"Numpy representation shape: {raw_shape}")
+                    print("-----------------------------\n")
+                    first_frame_diagnostic = False
+                    if ret_code == 0:
+                        raw_boxes, raw_scores = decode_yolov8_output(mat_out, scale_ratio, pad_left, pad_top, orig_w, orig_h)
+                        raw_detections = []
+                        for box, score in zip(raw_boxes, raw_scores):
+                            x_min, y_min, x_max, y_max = box
+                            center_x_disp = ((x_min + x_max) / 2) * cam["scale_x"]
+                            bottom_y_disp = y_max * cam["scale_y"]
+                            if cam["roi_min_x"] <= center_x_disp <= cam["roi_max_x"] and cam["roi_min_y"] <= bottom_y_disp <= cam["roi_max_y"]:
+                                truck_point = Point(center_x_disp, bottom_y_disp)  # type: ignore[misc]
+                                if cam["roi_polygon"].contains(truck_point):
+                                    raw_detections.append((box, score))
+                        cam["last_raw_detections"] = raw_detections
+                        cam["last_inference_time"] = current_time_sec
+                    else:
+                        raw_detections = cam["last_raw_detections"]
+                else:
+                    # Offload to background worker — use last known detections
+                    if not inference_pending[current_idx]:
+                        inference_pending[current_idx] = True
+                        inference_queue.put((current_idx, raw_frame))
+                    raw_detections = cam["last_raw_detections"]
+                    
+            tracked_trucks = cam["tracker"].update(raw_detections)
+            truck_in_zone_this_frame = False
+            detected_trucks = []
+            for t in tracked_trucks:
+                x_min, y_min, x_max, y_max = t["box"]
+                score = t["score"]
+                x_min_disp = x_min * cam["scale_x"]
+                y_min_disp = y_min * cam["scale_y"]
+                x_max_disp = x_max * cam["scale_x"]
+                y_max_disp = y_max * cam["scale_y"]
+                center_x = (x_min_disp + x_max_disp) / 2
+                bottom_y = y_max_disp
+                if cam["roi_min_x"] <= center_x <= cam["roi_max_x"] and cam["roi_min_y"] <= bottom_y <= cam["roi_max_y"]:
+                    truck_point = Point(center_x, bottom_y)  # type: ignore[misc]
+                    is_inside = cam["roi_polygon"].contains(truck_point)
+                else:
+                    is_inside = False
+                if is_inside:
+                    truck_in_zone_this_frame = True
+                    box_color = (0, 255, 0)
+                else:
+                    box_color = (0, 165, 255)
+                detected_trucks.append({
+                    "box": [int(x_min_disp), int(y_min_disp), int(x_max_disp), int(y_max_disp)],
+                    "anchor": (int(center_x), int(bottom_y)),
+                    "color": box_color,
+                    "score": score
+                })
+                
+            if truck_in_zone_this_frame:
+                if cam["consecutive_present"] < REQUIRED_PRESENT:
+                    cam["consecutive_present"] += 1
+                cam["consecutive_missing"] = 0
+            else:
+                if cam["consecutive_missing"] < REQUIRED_MISSING:
+                    cam["consecutive_missing"] += 1
+                cam["consecutive_present"] = 0
+                
+            if not cam["truck_in_zone"]:
+                if cam["consecutive_present"] >= REQUIRED_PRESENT:
+                    best_conf = max((t["score"] for t in detected_trucks), default=0.0)
+                    snap_path = save_snapshot(frame, cam["name"])
+                    print(f"\n[!] TRUCK DETECTED - Locking focus on: {cam['name']} (Confirmed across {REQUIRED_PRESENT} frames, conf={best_conf:.2f})")
+                    notify_truck_present(cam["id"], cam["name"], best_conf, snap_path)
+                    cam["truck_in_zone"] = True
+                    focused_idx = current_idx
+                    shared_state["focused_idx"] = focused_idx
+            else:
+                if cam["consecutive_missing"] >= REQUIRED_MISSING:
+                    last_conf = max((t["score"] for t in detected_trucks), default=0.0)
+                    print(f"\n[-] TRUCK DEPARTED - Unlocking focus from: {cam['name']} (Confirmed missing across {REQUIRED_MISSING} frames)")
+                    notify_truck_departed(cam["id"], cam["name"], last_conf)
+                    cam["truck_in_zone"] = False
+                    cam["consecutive_missing"] = 0
+                    focused_idx = None
+                    shared_state["focused_idx"] = focused_idx
+                    active_idx = (current_idx + 1) % len(camera_configs)
+                    shared_state["active_idx"] = active_idx
+                    
+            if focused_idx is None:
+                if time.time() - cam_switch_time >= SCAN_DURATION:
+                    if has_motion or truck_in_zone_this_frame or cam["consecutive_present"] > 0:
+                        cam_switch_time = time.time()
+                    else:
+                        prev_idx = active_idx
+                        active_idx = (active_idx + 1) % len(camera_configs)
+                        shared_state["active_idx"] = active_idx
+                        if active_idx != prev_idx:
+                            notify_camera_switched(prev_idx, camera_configs[prev_idx]["name"])
+
             # E. RENDERING VISUALS
             for t in detected_trucks:
                 x1, y1, x2, y2 = t["box"]
@@ -1200,16 +1243,15 @@ def _main():
             cv2.putText(frame, truck_label, (30, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.0, truck_color, 2)
             cv2.putText(frame, f"Motion: {motion_status}", (30, 190), cv2.FONT_HERSHEY_SIMPLEX, 0.8, motion_color, 2)
 
-            if is_new_frame:
-                now = time.time()
-                if last_stream_time is not None:
-                    elapsed = now - last_stream_time
-                    if elapsed > 0:
-                        fps_history.append(1.0 / elapsed)
-                    fps = sum(fps_history) / len(fps_history) if fps_history else 0.0
-                    shared_state["fps"] = fps
-                last_stream_time = now
-                streamer.update(frame)
+            now = time.time()
+            if last_stream_time is not None:
+                elapsed = now - last_stream_time
+                if elapsed > 0:
+                    fps_history.append(1.0 / elapsed)
+                fps = sum(fps_history) / len(fps_history) if fps_history else 0.0
+                shared_state["fps"] = fps
+            last_stream_time = now
+            streamer.update(frame)
 
     except KeyboardInterrupt:
         pass

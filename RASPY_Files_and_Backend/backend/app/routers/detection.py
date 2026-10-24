@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import FileResponse
+from pathlib import Path
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.dependencies import require_role, get_current_user
+from app.dependencies import require_detector_key, require_role
 from app.models.user import User
 from app.models.detection import DetectionLog, Notification
 from app.models.audit import AuditLog
+from app.paths import SNAPSHOT_DIR
 from app.schemas.detection import (
     DetectionEvent,
     DetectionLogResponse,
@@ -16,10 +19,26 @@ from datetime import datetime
 router = APIRouter(prefix="/detection", tags=["detection"])
 
 
+@router.get("/snapshots/{filename}")
+def download_detection_snapshot(
+    filename: str,
+    current_user: User = Depends(require_role("super_admin", "official")),
+):
+    snapshot_path = (SNAPSHOT_DIR / filename).resolve()
+    if (
+        Path(filename).name != filename
+        or snapshot_path.parent != SNAPSHOT_DIR.resolve()
+        or not snapshot_path.is_file()
+    ):
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+    return FileResponse(snapshot_path)
+
+
 @router.post("/event", response_model=DetectionLogResponse)
 def receive_detection_event(
     body: DetectionEvent,
     db: Session = Depends(get_db),
+    _: None = Depends(require_detector_key),
 ):
     log = DetectionLog(
         confidence_score=body.confidence,
@@ -40,6 +59,7 @@ def receive_truck_status(
     body: TruckStatusEvent,
     request: Request,
     db: Session = Depends(get_db),
+    _: None = Depends(require_detector_key),
 ):
     event_type = body.event_type.lower()
     if event_type not in ("truck_present", "truck_departed"):
@@ -74,7 +94,7 @@ def receive_truck_status(
         action_type=event_type,
         target_table="tbl_DetectionLog",
         target_id=log.log_id,
-        description=f"{action_label} on {body.camera_name} (confidence={body.confidence})",
+        description="A vehicle detection event was recorded.",
         ip_address=client_ip,
     )
     db.add(audit)
@@ -83,7 +103,7 @@ def receive_truck_status(
     db.refresh(log)
 
     return {
-        "status": "ok",
+        "status": "sent",
         "event_type": event_type,
         "log_id": log.log_id,
         "notification_id": notification.notification_id,
@@ -95,6 +115,7 @@ def receive_camera_event(
     body: CameraSwitchEvent,
     request: Request,
     db: Session = Depends(get_db),
+    _: None = Depends(require_detector_key),
 ):
     event_label = body.event_type.replace("_", " ").title()
 
@@ -104,7 +125,7 @@ def receive_camera_event(
         action_type=body.event_type,
         target_table="tbl_DetectionLog",
         target_id=None,
-        description=f"{event_label} on {body.camera_name} (id={body.camera_id})",
+        description="A camera monitoring event was recorded.",
         ip_address=client_ip,
     )
     db.add(audit)
@@ -151,8 +172,19 @@ def list_notifications(
 
 @router.get("/status")
 @router.get("/status/")
-def get_detection_status():
+def get_detection_status(db: Session = Depends(get_db)):
     from app.routers.websocket import camera_states, _ensure_cameras
     _ensure_cameras()
     truck_active = any(cam.get("truck_in_zone", False) for cam in camera_states.values())
-    return {"status": "active" if truck_active else "inactive", "system": "Vision-Trak"}
+    last_log = db.query(DetectionLog).order_by(DetectionLog.timestamp.desc()).first()
+    return {
+        "status": "active" if truck_active else "inactive",
+        "system": "Vision-Trak",
+        "last_detection": last_log.timestamp.isoformat() if last_log and last_log.timestamp else None,
+        "last_log": {
+            "log_id": last_log.log_id,
+            "camera_name": last_log.camera_name,
+            "confidence": last_log.confidence_score,
+            "timestamp": str(last_log.timestamp),
+        } if last_log else None
+    }

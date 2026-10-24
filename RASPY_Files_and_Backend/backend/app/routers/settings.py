@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.dependencies import require_role
+from app.dependencies import require_role, require_step_up
 from app.models.user import User
 from app.models.settings import SystemSetting
 from pydantic import BaseModel
@@ -29,6 +29,7 @@ def update_setting(
     body: SettingUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("super_admin")),
+    _mfa_user: User = Depends(require_step_up),
 ):
     setting = db.query(SystemSetting).filter(SystemSetting.config_key == key).first()
     if not setting:

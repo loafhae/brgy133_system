@@ -17,8 +17,12 @@ class AnnouncementProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final data = await ApiService.getList('/announcements?published_only=true');
-      _announcements = data.map((e) => Announcement.fromJson(e as Map<String, dynamic>)).toList();
+      final data = await ApiService.getList(
+        '/announcements?published_only=true',
+      );
+      _announcements = data
+          .map((e) => Announcement.fromJson(e as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');
     }

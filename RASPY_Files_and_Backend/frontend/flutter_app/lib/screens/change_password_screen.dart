@@ -50,30 +50,47 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8)),
-                    child: Text(auth.error!, style: const TextStyle(color: Colors.red)),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      auth.error!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
                   );
                 },
               ),
               TextFormField(
                 controller: _currentCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Current Password', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Current Password',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (v) => v == null || v.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _newCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'New Password', border: OutlineInputBorder()),
-                validator: (v) => v == null || v.length < 6 ? 'At least 6 characters' : null,
+                decoration: const InputDecoration(
+                  labelText: 'New Password',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) =>
+                    v == null || v.length < 6 ? 'At least 6 characters' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _confirmCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Confirm Password', border: OutlineInputBorder()),
-                validator: (v) => v != _newCtrl.text ? 'Passwords do not match' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Confirm Password',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) =>
+                    v != _newCtrl.text ? 'Passwords do not match' : null,
               ),
               const SizedBox(height: 24),
               Consumer<AuthProvider>(
@@ -82,7 +99,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   height: 48,
                   child: ElevatedButton(
                     onPressed: auth.loading ? null : _change,
-                    child: auth.loading ? const CircularProgressIndicator(strokeWidth: 2, color: Colors.white) : const Text('Change Password'),
+                    child: auth.loading
+                        ? const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          )
+                        : const Text('Change Password'),
                   ),
                 ),
               ),

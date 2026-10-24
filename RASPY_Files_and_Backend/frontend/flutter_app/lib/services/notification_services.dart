@@ -5,12 +5,16 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
 
 @pragma('vm:entry-point')
-void _onDidReceiveBackgroundNotificationResponse(NotificationResponse response) {}
+void _onDidReceiveBackgroundNotificationResponse(
+  NotificationResponse response,
+) {}
 
 class NotificationService {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
   static bool _listenerRegistered = false;
   static bool _localInitialized = false;
 
@@ -27,13 +31,11 @@ class NotificationService {
     if (_localInitialized) return;
     _localInitialized = true;
 
-    await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    await _messaging.requestPermission(alert: true, badge: true, sound: true);
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const initSettings = InitializationSettings(android: androidSettings);
 
     await _localNotifications.initialize(
@@ -49,11 +51,14 @@ class NotificationService {
           } catch (_) {}
         }
       },
-      onDidReceiveBackgroundNotificationResponse: _onDidReceiveBackgroundNotificationResponse,
+      onDidReceiveBackgroundNotificationResponse:
+          _onDidReceiveBackgroundNotificationResponse,
     );
 
     await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(_channel);
 
     setupForegroundListener();
@@ -66,12 +71,12 @@ class NotificationService {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       final title = message.notification?.title;
       final body = message.notification?.body;
-      print('[FCM] Foreground notification received: $title');
+      debugPrint('[FCM] Foreground notification received: $title');
       _showLocalNotification(title, body, message.data);
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('[FCM] User tapped notification: ${message.notification?.title}');
+      debugPrint('[FCM] User tapped notification: ${message.notification?.title}');
       final route = message.data['route'];
       if (route != null) {
         navigatorKey.currentState?.pushNamed(route);
@@ -90,7 +95,11 @@ class NotificationService {
     });
   }
 
-  static Future<void> _showLocalNotification(String? title, String? body, Map<String, dynamic> data) async {
+  static Future<void> _showLocalNotification(
+    String? title,
+    String? body,
+    Map<String, dynamic> data,
+  ) async {
     final androidDetails = AndroidNotificationDetails(
       _channel.id,
       _channel.name,
@@ -116,12 +125,10 @@ class NotificationService {
 
   static Future<void> _saveTokenToBackend(String token) async {
     try {
-      await ApiService.put('/residents/fcm-token', {
-        'fcm_token': token,
-      });
-      print('[FCM] Token saved to backend successfully');
+      await ApiService.put('/residents/fcm-token', {'fcm_token': token});
+      debugPrint('[FCM] Token saved to backend successfully');
     } catch (e) {
-      print('[FCM] Failed to save token: $e');
+      debugPrint('[FCM] Failed to save token: $e');
     }
   }
 
@@ -136,7 +143,7 @@ class NotificationService {
         _saveTokenToBackend(newToken);
       });
     } catch (e) {
-      print('[FCM] Failed to save token after login: $e');
+      debugPrint('[FCM] Failed to save token after login: $e');
     }
   }
 }

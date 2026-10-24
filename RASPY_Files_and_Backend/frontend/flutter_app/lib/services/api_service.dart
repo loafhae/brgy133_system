@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,13 +10,29 @@ class ApiService {
   static const String _configuredBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
   );
-  static String get baseUrl => _configuredBaseUrl.isNotEmpty
-      ? _configuredBaseUrl
-      : 'http://${!kIsWeb && Platform.isAndroid ? '10.0.2.2' : '127.0.0.1'}:8000/api';
+  static String get baseUrl {
+    if (_configuredBaseUrl.isNotEmpty) return _configuredBaseUrl;
+    // In debug builds (flutter run), default to local backend
+    if (kDebugMode) return 'http://localhost:8000/api';
+    // In release/profile builds, use the production domain
+    return 'https://visiontrak.ragetech.dev/api';
+  }
+  static Future<String?> Function(String? error)? requestMfaCode;
+  static VoidCallback? onUnauthorized;
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token') ?? prefs.getString('auth_token');
+  }
+
+  static void _checkUnauthorized(int statusCode, bool auth) {
+    if (auth && statusCode == 401) {
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.remove('token');
+        prefs.remove('auth_token');
+      });
+      onUnauthorized?.call();
+    }
   }
 
   static Future<Map<String, String>> _getHeaders({bool auth = true}) async {
@@ -39,19 +55,69 @@ class ApiService {
     } on FormatException {
       // Fall back to the HTTP status when the response isn't JSON.
     }
-    return 'POST request failed: ${response.statusCode}';
+    return 'Request failed: ${response.statusCode}';
+  }
+
+  static Future<http.Response> _sendWithMfa(
+    Future<http.Response> Function() send,
+    Map<String, String> headers,
+  ) async {
+    var response = await send();
+    if (response.statusCode != 428) return response;
+
+    final challenge = await http.post(
+      Uri.parse('$baseUrl/auth/mfa/challenge'),
+      headers: headers,
+      body: '{}',
+    );
+    if (challenge.statusCode < 200 || challenge.statusCode >= 300) {
+      throw Exception(_postErrorMessage(challenge));
+    }
+
+    var verified = false;
+    String? verificationError;
+    for (var attempt = 0; attempt < 5; attempt++) {
+      final code = await requestMfaCode?.call(verificationError);
+      if (code == null || code.length != 6) {
+        throw Exception('Verification was canceled.');
+      }
+      final verification = await http.post(
+        Uri.parse('$baseUrl/auth/mfa/verify'),
+        headers: headers,
+        body: jsonEncode({'otp': code}),
+      );
+      if (verification.statusCode >= 200 && verification.statusCode < 300) {
+        verified = true;
+        break;
+      }
+      verificationError = _postErrorMessage(verification);
+      if (verification.statusCode != 400) {
+        throw Exception(verificationError);
+      }
+    }
+    if (!verified) {
+      throw Exception(verificationError ?? 'Verification failed.');
+    }
+
+    response = await send();
+    return response;
   }
 
   static Future<dynamic> get(String endpoint, {bool auth = true}) async {
     final headers = await _getHeaders(auth: auth);
     final url = Uri.parse('$baseUrl$endpoint');
-    final response = await http.get(url, headers: headers);
+    final response = await _sendWithMfa(
+      () => http.get(url, headers: headers),
+      headers,
+    );
+
+    _checkUnauthorized(response.statusCode, auth);
 
     if (response.statusCode == 200) {
       if (response.body.isEmpty) return null;
       return jsonDecode(response.body);
     } else {
-      throw Exception('Failed to load data: ${response.statusCode}');
+      throw Exception(_postErrorMessage(response));
     }
   }
 
@@ -61,7 +127,12 @@ class ApiService {
   }) async {
     final headers = await _getHeaders(auth: auth);
     final url = Uri.parse('$baseUrl$endpoint');
-    final response = await http.get(url, headers: headers);
+    final response = await _sendWithMfa(
+      () => http.get(url, headers: headers),
+      headers,
+    );
+
+    _checkUnauthorized(response.statusCode, auth);
 
     if (response.statusCode == 200) {
       if (response.body.isEmpty) return [];
@@ -73,7 +144,7 @@ class ApiService {
       }
       return [];
     } else {
-      throw Exception('Failed to load list: ${response.statusCode}');
+      throw Exception(_postErrorMessage(response));
     }
   }
 
@@ -84,11 +155,12 @@ class ApiService {
   }) async {
     final headers = await _getHeaders(auth: auth);
     final url = Uri.parse('$baseUrl$endpoint');
-    final response = await http.post(
-      url,
-      headers: headers,
-      body: jsonEncode(body),
+    final response = await _sendWithMfa(
+      () => http.post(url, headers: headers, body: jsonEncode(body)),
+      headers,
     );
+
+    _checkUnauthorized(response.statusCode, auth);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return null;
@@ -140,13 +212,14 @@ class ApiService {
 
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
+
+    _checkUnauthorized(response.statusCode, true);
+
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return null;
       return jsonDecode(response.body);
     }
-    throw Exception(
-      'Feedback submission failed: ${response.statusCode} - ${response.body}',
-    );
+    throw Exception(_postErrorMessage(response));
   }
 
   static Future<dynamic> put(
@@ -156,32 +229,36 @@ class ApiService {
   }) async {
     final headers = await _getHeaders(auth: auth);
     final url = Uri.parse('$baseUrl$endpoint');
-    final response = await http.put(
-      url,
-      headers: headers,
-      body: jsonEncode(body),
+    final response = await _sendWithMfa(
+      () => http.put(url, headers: headers, body: jsonEncode(body)),
+      headers,
     );
+
+    _checkUnauthorized(response.statusCode, auth);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return null;
       return jsonDecode(response.body);
     } else {
-      throw Exception(
-        'PUT request failed: ${response.statusCode} - ${response.body}',
-      );
+      throw Exception(_postErrorMessage(response));
     }
   }
 
   static Future<dynamic> delete(String endpoint, {bool auth = true}) async {
     final headers = await _getHeaders(auth: auth);
     final url = Uri.parse('$baseUrl$endpoint');
-    final response = await http.delete(url, headers: headers);
+    final response = await _sendWithMfa(
+      () => http.delete(url, headers: headers),
+      headers,
+    );
+
+    _checkUnauthorized(response.statusCode, auth);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return null;
       return jsonDecode(response.body);
     } else {
-      throw Exception('DELETE request failed: ${response.statusCode}');
+      throw Exception(_postErrorMessage(response));
     }
   }
 
@@ -246,13 +323,13 @@ class ApiService {
     var streamedResponse = await request.send();
     var response = await http.Response.fromStream(streamedResponse);
 
+    _checkUnauthorized(response.statusCode, true);
+
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return null;
       return jsonDecode(response.body);
     } else {
-      throw Exception(
-        'Multipart upload failed: ${response.statusCode} - ${response.body}',
-      );
+      throw Exception(_postErrorMessage(response));
     }
   }
 }

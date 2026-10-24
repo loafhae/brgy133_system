@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
 class UserManagementView extends StatefulWidget {
-  const UserManagementView({Key? key}) : super(key: key);
+  const UserManagementView({super.key});
 
   @override
   State<UserManagementView> createState() => _UserManagementViewState();
 }
 
 class _UserManagementViewState extends State<UserManagementView> {
-  String _currentSubView = 'list'; 
+  String _currentSubView = 'list';
   List<dynamic> _users = [];
   bool _isLoading = true;
   String _searchTerm = "";
   String _roleFilter = "";
- 
+
   Map<String, dynamic>? _selectedUser;
 
   final _usernameController = TextEditingController();
@@ -65,7 +65,11 @@ class _UserManagementViewState extends State<UserManagementView> {
                 Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
                 ),
                 const SizedBox(height: 40),
                 Row(
@@ -79,9 +83,18 @@ class _UserManagementViewState extends State<UserManagementView> {
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Colors.black),
                           padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(0),
+                          ),
                         ),
-                        child: const Text('YES', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
+                        child: const Text(
+                          'YES',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 40),
@@ -91,13 +104,22 @@ class _UserManagementViewState extends State<UserManagementView> {
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Colors.black),
                           padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(0),
+                          ),
                         ),
-                        child: const Text('NO', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
+                        child: const Text(
+                          'NO',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),
@@ -116,8 +138,11 @@ class _UserManagementViewState extends State<UserManagementView> {
   }
 
   Future<void> _executeSaveOrUpdate() async {
-    if (_passwordController.text.isNotEmpty && _passwordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Passwords do not match!")));
+    if (_passwordController.text.isNotEmpty &&
+        _passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Passwords do not match!")));
       return;
     }
 
@@ -155,7 +180,9 @@ class _UserManagementViewState extends State<UserManagementView> {
 
   Widget _buildListView() {
     final filtered = _users.where((u) {
-      final matchSearch = u['username'].toString().toLowerCase().contains(_searchTerm.toLowerCase());
+      final matchSearch = u['username'].toString().toLowerCase().contains(
+        _searchTerm.toLowerCase(),
+      );
       final matchRole = _roleFilter.isEmpty || u['roles'] == _roleFilter;
       return matchSearch && matchRole;
     }).toList();
@@ -195,9 +222,11 @@ class _UserManagementViewState extends State<UserManagementView> {
                     child: DropdownButton<String>(
                       value: _roleFilter.isEmpty ? null : _roleFilter,
                       hint: const Text("Filter by"),
-                      items: ['Super Admin', 'Barangay Official', 'Resident'].map((r) {
-                        return DropdownMenuItem(value: r, child: Text(r));
-                      }).toList(),
+                      items: ['Super Admin', 'Barangay Official', 'Resident']
+                          .map((r) {
+                            return DropdownMenuItem(value: r, child: Text(r));
+                          })
+                          .toList(),
                       onChanged: (v) => setState(() => _roleFilter = v ?? ""),
                     ),
                   ),
@@ -216,13 +245,21 @@ class _UserManagementViewState extends State<UserManagementView> {
                 });
               },
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add New User', style: TextStyle(fontWeight: FontWeight.bold)),
+              label: const Text(
+                'Add New User',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(0),
+                ),
                 side: const BorderSide(color: Colors.grey),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 15,
+                ),
               ),
             ),
           ],
@@ -233,82 +270,120 @@ class _UserManagementViewState extends State<UserManagementView> {
             : Container(
                 color: Colors.white,
                 child: SizedBox(
-                  width: 800, 
+                  width: 800,
                   child: Table(
                     border: TableBorder.all(color: Colors.black),
                     columnWidths: const {
-                      0: FixedColumnWidth(50),  
-                      1: FixedColumnWidth(280), 
-                      2: FixedColumnWidth(200), 
-                      3: FixedColumnWidth(150), 
-                      4: FixedColumnWidth(120), 
+                      0: FixedColumnWidth(50),
+                      1: FixedColumnWidth(280),
+                      2: FixedColumnWidth(200),
+                      3: FixedColumnWidth(150),
+                      4: FixedColumnWidth(120),
                     },
-                  children: [
-                    TableRow(
-                      decoration: const BoxDecoration(color: Color(0xFFEAEAEA)),
-                      children: ['#', 'Username', 'Role', 'Status', 'Action'].map((h) {
-                        return Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Text(h, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                        );
-                      }).toList(),
-                    ),
-                    ...List.generate(filtered.length, (index) {
-                      final item = filtered[index];
-                      String displayedRole = item['roles'] ?? 'Resident';
-                     
-                      bool isActiveUser = item['is_active'] ?? true;
-                      String statusText = isActiveUser ? "Active" : "Inactive";
+                    children: [
+                      TableRow(
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEAEAEA),
+                        ),
+                        children: ['#', 'Username', 'Role', 'Status', 'Action']
+                            .map((h) {
+                              return Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Text(
+                                  h,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              );
+                            })
+                            .toList(),
+                      ),
+                      ...List.generate(filtered.length, (index) {
+                        final item = filtered[index];
+                        String displayedRole = item['roles'] ?? 'Resident';
 
-                      return TableRow(
-                        children: [
-                          Padding(padding: const EdgeInsets.all(12), child: Text('${index + 1}')),
-                          Padding(padding: const EdgeInsets.all(12), child: Text(item['username'] ?? '')),
-                          Padding(padding: const EdgeInsets.all(12), child: Text(displayedRole)),
-                          Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Text(
-                              statusText,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: isActiveUser ? Colors.green[700] : Colors.red[700]
-                              ),
+                        bool isActiveUser = item['is_active'] ?? true;
+                        String statusText = isActiveUser
+                            ? "Active"
+                            : "Inactive";
+
+                        return TableRow(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Text('${index + 1}'),
                             ),
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit, size: 18, color: Colors.black87),
-                                onPressed: () {
-                                  setState(() {
-                                    _selectedUser = item;
-                                    _usernameController.text = item['username'] ?? '';
-                                    _selectedRole = item['roles'] == 'Super Admin' || item['roles'] == 'Barangay Official' || item['roles'] == 'Resident'
-                                        ? item['roles']
-                                        : 'Resident';
-                                    _passwordController.clear();
-                                    _confirmPasswordController.clear();
-                                    _currentSubView = 'edit';
-                                  });
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, size: 18, color: Colors.black87),
-                                onPressed: () => _showConfirmationModal(
-                                  title: "Are you sure you want to DELETE this user?",
-                                  onConfirm: () => _executeDelete(item['user_id']),
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Text(item['username'] ?? ''),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Text(displayedRole),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Text(
+                                statusText,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isActiveUser
+                                      ? Colors.green[700]
+                                      : Colors.red[700],
                                 ),
                               ),
-                            ],
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    size: 18,
+                                    color: Colors.black87,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _selectedUser = item;
+                                      _usernameController.text =
+                                          item['username'] ?? '';
+                                      _selectedRole =
+                                          item['roles'] == 'Super Admin' ||
+                                              item['roles'] ==
+                                                  'Barangay Official' ||
+                                              item['roles'] == 'Resident'
+                                          ? item['roles']
+                                          : 'Resident';
+                                      _passwordController.clear();
+                                      _confirmPasswordController.clear();
+                                      _currentSubView = 'edit';
+                                    });
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    size: 18,
+                                    color: Colors.black87,
+                                  ),
+                                  onPressed: () => _showConfirmationModal(
+                                    title:
+                                        "Are you sure you want to DELETE this user?",
+                                    onConfirm: () =>
+                                        _executeDelete(item['user_id']),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      }),
+                    ],
+                  ),
                 ),
               ),
-            ),
       ],
     );
   }
@@ -318,7 +393,10 @@ class _UserManagementViewState extends State<UserManagementView> {
       child: Container(
         width: 460,
         padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(4)),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -331,20 +409,31 @@ class _UserManagementViewState extends State<UserManagementView> {
             const SizedBox(height: 20),
             TextField(
               controller: _usernameController,
-              decoration: const InputDecoration(hintText: 'Username', border: OutlineInputBorder(), fillColor: Colors.white, filled: true),
+              decoration: const InputDecoration(
+                hintText: 'Username',
+                border: OutlineInputBorder(),
+                fillColor: Colors.white,
+                filled: true,
+              ),
             ),
             const SizedBox(height: 15),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(border: Border.all(color: Colors.grey), color: Colors.white),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                color: Colors.white,
+              ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _selectedRole,
                   isExpanded: true,
-                  items: ['Super Admin', 'Barangay Official', 'Resident'].map((r) {
+                  items: ['Super Admin', 'Barangay Official', 'Resident'].map((
+                    r,
+                  ) {
                     return DropdownMenuItem(value: r, child: Text(r));
                   }).toList(),
-                  onChanged: (v) => setState(() => _selectedRole = v ?? 'Resident'),
+                  onChanged: (v) =>
+                      setState(() => _selectedRole = v ?? 'Resident'),
                 ),
               ),
             ),
@@ -353,12 +442,16 @@ class _UserManagementViewState extends State<UserManagementView> {
               controller: _passwordController,
               obscureText: _obscurePass,
               decoration: InputDecoration(
-                hintText: _currentSubView == 'add' ? 'Password' : 'New Password (or leave blank)',
+                hintText: _currentSubView == 'add'
+                    ? 'Password'
+                    : 'New Password (or leave blank)',
                 border: const OutlineInputBorder(),
                 fillColor: Colors.white,
                 filled: true,
                 suffixIcon: IconButton(
-                  icon: Icon(_obscurePass ? Icons.visibility_off : Icons.visibility),
+                  icon: Icon(
+                    _obscurePass ? Icons.visibility_off : Icons.visibility,
+                  ),
                   onPressed: () => setState(() => _obscurePass = !_obscurePass),
                 ),
               ),
@@ -373,29 +466,48 @@ class _UserManagementViewState extends State<UserManagementView> {
                 fillColor: Colors.white,
                 filled: true,
                 suffixIcon: IconButton(
-                  icon: Icon(_obscureConfirmPass ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _obscureConfirmPass = !_obscureConfirmPass),
+                  icon: Icon(
+                    _obscureConfirmPass
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                  ),
+                  onPressed: () => setState(
+                    () => _obscureConfirmPass = !_obscureConfirmPass,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 25),
             ElevatedButton(
               onPressed: () => _showConfirmationModal(
-                title: _currentSubView == 'add' ? "Are you sure you want to ADD this user?" : "Are you sure you want to SAVE this user?",
+                title: _currentSubView == 'add'
+                    ? "Are you sure you want to ADD this user?"
+                    : "Are you sure you want to SAVE this user?",
                 onConfirm: _executeSaveOrUpdate,
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.grey[700],
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
-              child: Text(_currentSubView == 'add' ? 'Add User' : 'Save', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              child: Text(
+                _currentSubView == 'add' ? 'Add User' : 'Save',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
             ),
             TextButton(
               onPressed: () => setState(() => _currentSubView = 'list'),
-              child: const Text('Cancel', style: TextStyle(color: Colors.black54)),
-            )
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.black54),
+              ),
+            ),
           ],
         ),
       ),

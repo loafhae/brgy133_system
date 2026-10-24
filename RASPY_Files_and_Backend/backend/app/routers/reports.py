@@ -1,17 +1,15 @@
 import os
-from fastapi import APIRouter, Depends, HTTPException, Query
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from typing import Optional
-from datetime import date
 from app.database import get_db
 from app.dependencies import require_role
 from app.models.user import User
-from app.models.feedback import Feedback
-from app.models.detection import DetectionLog
-from app.models.announcement import Announcement
 from app.models.reports import Report
 from app.schemas.report import ReportCreate, ReportResponse
 from app.services.report_service import generate_report
+from app.paths import REPORT_UPLOAD_DIR
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -30,12 +28,34 @@ def list_reports(
             "file_format": r.file_format,
             "start_date": str(r.start_date) if r.start_date else None,
             "end_date": str(r.end_date) if r.end_date else None,
-            "file_path": r.file_path,
-            "download_url": "/uploads/reports/" + os.path.basename(r.file_path) if r.file_path else None,
+            "download_url": f"/api/reports/{r.report_id}/download" if r.file_path else None,
             "created_at": str(r.created_at) if r.created_at else None,
         }
         for r in reports
     ]
+
+
+@router.get("/{report_id}/download")
+def download_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("super_admin", "official")),
+):
+    report = db.query(Report).filter(Report.report_id == report_id).first()
+    if not report or not report.file_path:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    report_path = Path(report.file_path).resolve()
+    report_dir = REPORT_UPLOAD_DIR.resolve()
+    if report_path.parent != report_dir or not report_path.is_file():
+        raise HTTPException(status_code=404, detail="Report file not found")
+
+    media_type = (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        if report.file_format == "docx"
+        else "application/pdf"
+    )
+    return FileResponse(report_path, filename=report_path.name, media_type=media_type)
 
 
 @router.post("/generate", response_model=ReportResponse)

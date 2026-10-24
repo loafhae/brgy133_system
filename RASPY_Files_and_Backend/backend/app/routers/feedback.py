@@ -88,9 +88,12 @@ def list_feedback(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("official")),
+    current_user: User = Depends(require_role("official", "super_admin", "resident")),
 ):
     query = db.query(Feedback).options(joinedload(Feedback.author))
+    user_roles = [r.strip().lower() for r in (current_user.roles or "").split(",") if r.strip()]
+    if "resident" in user_roles and not any(r in ("official", "super_admin") for r in user_roles):
+        query = query.filter(Feedback.created_by == current_user.user_id)
     if search:
         query = query.filter(Feedback.subject.ilike(f"%{search}%"))
     feedbacks = query.order_by(Feedback.timestamp.desc()).offset((page - 1) * limit).limit(limit).all()
@@ -104,11 +107,15 @@ def list_feedback(
 def get_feedback(
     feedback_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("official")),
+    current_user: User = Depends(require_role("official", "super_admin", "resident")),
 ):
     feedback = db.query(Feedback).options(joinedload(Feedback.author)).filter(Feedback.feedback_id == feedback_id).first()
     if not feedback:
         raise HTTPException(status_code=404, detail="Feedback not found")
+    user_roles = [r.strip().lower() for r in (current_user.roles or "").split(",") if r.strip()]
+    if "resident" in user_roles and not any(r in ("official", "super_admin") for r in user_roles):
+        if feedback.created_by != current_user.user_id:
+            raise HTTPException(status_code=403, detail="Access denied")
     return feedback_response(feedback, feedback.author.username if feedback.author else "Unknown")
 
 
@@ -122,6 +129,10 @@ def get_feedback_attachment(
     feedback = db.query(Feedback).filter(Feedback.feedback_id == feedback_id).first()
     if not feedback or not feedback.attachments:
         raise HTTPException(status_code=404, detail="Attachment not found")
+    user_roles = [r.strip().lower() for r in (current_user.roles or "").split(",") if r.strip()]
+    if "resident" in user_roles and not any(r in ("official", "super_admin") for r in user_roles):
+        if feedback.created_by != current_user.user_id:
+            raise HTTPException(status_code=403, detail="Access denied")
     attachment = next(
         (item for item in json.loads(feedback.attachments) if item["attachment_id"] == attachment_id),
         None,
@@ -147,6 +158,9 @@ def submit_feedback(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("resident")),
 ):
+    if not body.subject.strip() or not body.content.strip():
+        raise HTTPException(status_code=422, detail="Subject and message are required.")
+
     feedback = Feedback(
         created_by=current_user.user_id,
         subject=body.subject,
@@ -292,7 +306,7 @@ def resolve_feedback(
 def delete_feedback(
     feedback_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("official")),
+    current_user: User = Depends(require_role("super_admin")),
 ):
     feedback = db.query(Feedback).filter(Feedback.feedback_id == feedback_id).first()
     if not feedback:

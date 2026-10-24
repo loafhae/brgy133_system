@@ -35,16 +35,16 @@ function FeedbackAttachment({ feedbackId, attachment }) {
   return (
     <Box sx={{ mb: 2 }}>
       {attachment.mime_type.startsWith('image/') && (
-        <a href={url} target="_blank" rel="noreferrer">
+        <a href={url} target="_blank" rel="noopener noreferrer">
           <Box
             component="img"
             src={url}
-            alt={attachment.original_filename}
+            alt={`Resident submitted attachment: ${attachment.original_filename}`}
             sx={{ display: 'block', maxWidth: '100%', maxHeight: 360, objectFit: 'contain', mb: 1 }}
           />
         </a>
       )}
-      <Button component="a" href={url} target="_blank" rel="noreferrer" size="small">
+      <Button component="a" href={url} target="_blank" rel="noopener noreferrer" size="small">
         {attachment.mime_type === 'application/pdf' ? 'Open PDF' : 'Open image'} — {attachment.original_filename}
       </Button>
     </Box>
@@ -69,7 +69,9 @@ export default function Feedback() {
 
   useEffect(() => {
     fetch();
-    const interval = setInterval(() => fetch(), 10000);
+    const interval = setInterval(() => {
+      if (!document.hidden) fetch();
+    }, 20000);
     return () => clearInterval(interval);
   }, [fetch]);
 

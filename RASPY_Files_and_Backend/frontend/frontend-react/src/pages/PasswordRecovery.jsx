@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, TextField, Button, Typography, Alert, Card } from '@mui/material';
 import api from '../api/client';
@@ -11,15 +11,29 @@ export default function PasswordRecovery() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [otpFocused, setOtpFocused] = useState(false);
+  const [resending, setResending] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
     setError('');
+    setInfo('');
     setLoading(true);
     try {
-      await api.post('/auth/forgot-password', { email });
+      await api.post('/auth/forgot-password', { email: email.trim() });
       setScreen('verify');
+      setCooldown(20);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to send verification code.');
     } finally {
@@ -30,14 +44,36 @@ export default function PasswordRecovery() {
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setError('');
+    setInfo('');
+    if (otp.length !== 6) {
+      setError('Enter all 6 digits of the verification code.');
+      return;
+    }
     setLoading(true);
     try {
-      await api.post('/auth/verify-otp', { email, otp });
+      await api.post('/auth/verify-otp', { email: email.trim(), otp });
       setScreen('reset');
     } catch (err) {
       setError(err.response?.data?.detail || 'Invalid or expired verification code.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (cooldown > 0) return;
+    setError('');
+    setInfo('');
+    setResending(true);
+    try {
+      await api.post('/auth/forgot-password', { email: email.trim() });
+      setOtp('');
+      setInfo('A new verification code was sent to your email.');
+      setCooldown(20);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to send verification code.');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -50,7 +86,7 @@ export default function PasswordRecovery() {
     }
     setLoading(true);
     try {
-      await api.post('/auth/reset-password', { email, otp, new_password: newPassword });
+      await api.post('/auth/reset-password', { email: email.trim(), otp, new_password: newPassword });
       setScreen('success');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to reset password.');
@@ -63,7 +99,7 @@ export default function PasswordRecovery() {
     <Box sx={{
       display: 'flex', justifyContent: 'center', alignItems: 'center',
       minHeight: '100vh',
-      backgroundImage: 'url(/barangay.jpg)',
+      backgroundImage: 'url(/barangay.jpg?v=2)',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       p: 2
@@ -81,6 +117,7 @@ export default function PasswordRecovery() {
         <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: 1, mb: 1 }}>BARANGAY 133</Typography>
 
         {error && <Alert severity="error" sx={{ mb: 2, textAlign: 'left' }}>{error}</Alert>}
+        {info && <Alert severity="success" sx={{ mb: 2, textAlign: 'left' }}>{info}</Alert>}
 
         {screen === 'forgot' && (
           <form onSubmit={handleSendOtp}>
@@ -105,9 +142,60 @@ export default function PasswordRecovery() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               We sent a 6-digit code to {email}. It expires in 10 minutes.
             </Typography>
-            <TextField label="6-Digit Code" fullWidth required slotProps={{ input: { maxLength: 6 } }} value={otp}
-              onChange={(e) => setOtp(e.target.value)} sx={{ mb: 3, textAlign: 'center' }} />
-            <Button type="submit" variant="contained" fullWidth size="large" disabled={loading} sx={{ py: 1.5, fontWeight: 700, mb: 2 }}>
+            <Box sx={{ position: 'relative', mb: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+                {Array.from({ length: 6 }, (_, index) => (
+                  <Box
+                    key={index}
+                    aria-hidden="true"
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 48,
+                      height: 56,
+                      border: '1px solid',
+                      borderColor: error ? 'error.main' : otpFocused && index === Math.min(otp.length, 5) ? 'primary.main' : 'grey.400',
+                      borderRadius: 1.5,
+                      bgcolor: 'grey.50',
+                      fontSize: '1.4rem',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {otp[index] || ''}
+                  </Box>
+                ))}
+              </Box>
+              <Box
+                component="input"
+                type="text"
+                value={otp}
+                aria-label="6-digit verification code"
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                onFocus={() => setOtpFocused(true)}
+                onBlur={() => setOtpFocused(false)}
+                onChange={(e) => {
+                  setOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
+                  setError('');
+                  setInfo('');
+                }}
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0,
+                  cursor: 'text',
+                }}
+              />
+            </Box>
+            <Button type="button" variant="text" fullWidth disabled={loading || resending || cooldown > 0} onClick={handleResendOtp} sx={{ mb: 2 }}>
+              {resending ? 'Sending...' : cooldown > 0 ? `Resend code (${cooldown}s)` : 'Resend code'}
+            </Button>
+            <Button type="submit" variant="contained" fullWidth size="large" disabled={loading || resending} sx={{ py: 1.5, fontWeight: 700, mb: 2 }}>
               {loading ? 'Verifying...' : 'VERIFY CODE'}
             </Button>
           </form>

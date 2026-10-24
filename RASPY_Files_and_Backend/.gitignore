@@ -60,6 +60,7 @@ pip-wheel-metadata/
 # Environment files (may contain secrets)
 .env
 .env.*
+!.env.example
 
 # --- Node / React / frontend ---
 # Node dependencies and build outputs
@@ -78,9 +79,19 @@ yarn-error.log*
 .idea/
 *.iml
 
-# --- Logs and runtime ---
+# --- Logs, databases, and runtime ---
 *.log
+*.db
+*.sqlite3
 .pytest_cache/
+tunnel_*.txt
+*.exe
 
-# End of .gitignore
-)
+# Local credentials and runtime data
+cameras.json
+latest_otp.txt
+backend/latest_otp.txt
+backend/test.db
+backend/private_feedback_uploads/
+backend/test.html
+backend/app/serviceAccountKey.json

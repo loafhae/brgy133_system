@@ -5,9 +5,9 @@ import '../services/api_service.dart';
 class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
-  
+
   // Added back to support screens checking loading state
-  bool get loading => _isLoading; 
+  bool get loading => _isLoading;
 
   String? _error;
   String? get error => _error; // Added back to support error messages
@@ -28,11 +28,13 @@ class AuthProvider with ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
 
         final rawUserId = data['user_id'] ?? data['resident_id'] ?? data['id'];
-        final int userId = rawUserId is int ? rawUserId : int.parse(rawUserId.toString());
+        final int userId = rawUserId is int
+            ? rawUserId
+            : int.parse(rawUserId.toString());
 
         await prefs.setInt('user_id', userId);
         await prefs.setInt('resident_id', userId);
-        
+
         if (data['access_token'] != null) {
           await prefs.setString('token', data['access_token']);
         }
@@ -43,7 +45,7 @@ class AuthProvider with ChangeNotifier {
       }
     } catch (e) {
       _error = e.toString();
-      print('Login error: $e');
+      debugPrint('Login error: $e');
     }
 
     _isLoading = false;
@@ -52,7 +54,10 @@ class AuthProvider with ChangeNotifier {
   }
 
   // Added back to satisfy change_password_screen.dart
-  Future<bool> changePassword(String currentPassword, String newPassword) async {
+  Future<bool> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
