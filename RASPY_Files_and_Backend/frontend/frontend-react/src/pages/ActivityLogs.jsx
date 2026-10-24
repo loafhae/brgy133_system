@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Box, Typography, TextField, Snackbar, Chip } from '@mui/material';
+import { Box, Typography, TextField, Snackbar, Chip, Paper } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import api from '../api/client';
 
@@ -140,16 +140,21 @@ export default function ResidentActivityLogs() {
   ];
 
   return (
-    <Box>
-      <Typography variant="h4" sx={{ fontWeight: 600, mb: 2 }}>
-        Resident Activity Logs
-      </Typography>
+    <Box sx={{ py: 1 }} className="animate-fade-in">
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', fontSize: { xs: '1.4rem', sm: '1.8rem', md: '2.1rem' } }}>
+          Resident Activity Logs
+        </Typography>
+        <Typography variant="body2" sx={{ color: '#64748b', mt: 0.4, fontSize: { xs: '0.84rem', sm: '0.92rem' } }}>
+          Audit trail of resident portal access, authentication sessions, and submissions.
+        </Typography>
+      </Box>
 
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', gap: 1.5, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           label="Search resident logs"
           size="small"
-          sx={{ minWidth: 300 }}
+          sx={{ flex: { xs: '1 1 100%', sm: '1 1 240px' } }}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -157,7 +162,7 @@ export default function ResidentActivityLogs() {
           label="From"
           type="date"
           size="small"
-          sx={{ minWidth: 180 }}
+          sx={{ flex: { xs: '1 1 48%', sm: '0 1 160px' } }}
           value={dateFrom}
           onChange={(e) => setDateFrom(e.target.value)}
           slotProps={{ inputLabel: { shrink: true } }}
@@ -166,22 +171,36 @@ export default function ResidentActivityLogs() {
           label="To"
           type="date"
           size="small"
-          sx={{ minWidth: 180 }}
+          sx={{ flex: { xs: '1 1 48%', sm: '0 1 160px' } }}
           value={dateTo}
           onChange={(e) => setDateTo(e.target.value)}
           slotProps={{ inputLabel: { shrink: true } }}
         />
       </Box>
 
-      <DataGrid
-        rows={filtered}
-        columns={columns}
-        getRowId={(r) => r.log_id}
-        loading={loading}
-        autoHeight
-        pageSizeOptions={[10, 25, 50, 100]}
-        disableRowSelectionOnClick
-      />
+      <Paper sx={{
+        bgcolor: '#ffffff',
+        borderRadius: 3.5,
+        border: '1px solid rgba(226, 232, 240, 0.85)',
+        boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 4px 16px rgba(15, 23, 42, 0.03)',
+        overflow: 'hidden',
+        p: { xs: 1, sm: 1.5 },
+      }}>
+        <Box sx={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <Box sx={{ minWidth: 700 }}>
+            <DataGrid
+              rows={filtered}
+              columns={columns}
+              getRowId={(r) => r.log_id}
+              loading={loading}
+              autoHeight
+              pageSizeOptions={[10, 25, 50, 100]}
+              disableRowSelectionOnClick
+              sx={{ border: 'none' }}
+            />
+          </Box>
+        </Box>
+      </Paper>
 
       <Snackbar
         open={!!snack}

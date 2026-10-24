@@ -237,7 +237,7 @@ export default function DetectionLogs() {
                   Truck Arrival Detections
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 800, color: '#0f172a' }}>
-                  {stats.truckDetected}
+                  {stats.trucksDetected}
                 </Typography>
               </Box>
             </Stack>
@@ -270,27 +270,31 @@ export default function DetectionLogs() {
         border: '1px solid rgba(226, 232, 240, 0.85)',
         boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 4px 16px rgba(15, 23, 42, 0.03)',
         overflow: 'hidden',
-        p: 1.5,
+        p: { xs: 1, sm: 1.5 },
       }}>
-        <DataGrid
-          rows={items}
-          columns={columns}
-          getRowId={(r) => r.log_id}
-          loading={loading}
-          autoHeight
-          pageSizeOptions={[10, 25, 50]}
-          initialState={{
-            pagination: { paginationModel: { pageSize: 10 } },
-          }}
-          disableRowSelectionOnClick
-          sx={{
-            border: 'none',
-            '& .MuiDataGrid-cell': {
-              display: 'flex',
-              alignItems: 'center',
-            },
-          }}
-        />
+        <Box sx={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <Box sx={{ minWidth: 700 }}>
+            <DataGrid
+              rows={items}
+              columns={columns}
+              getRowId={(r) => r.log_id}
+              loading={loading}
+              autoHeight
+              pageSizeOptions={[10, 25, 50]}
+              initialState={{
+                pagination: { paginationModel: { pageSize: 10 } },
+              }}
+              disableRowSelectionOnClick
+              sx={{
+                border: 'none',
+                '& .MuiDataGrid-cell': {
+                  display: 'flex',
+                  alignItems: 'center',
+                },
+              }}
+            />
+          </Box>
+        </Box>
       </Paper>
     </Box>
   );

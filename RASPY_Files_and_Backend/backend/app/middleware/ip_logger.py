@@ -1,8 +1,11 @@
 import logging
 import re
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.requests import Request
-from starlette.responses import Response
+from starlette.middleware.base import (
+    BaseHTTPMiddleware,
+    RequestResponseEndpoint,
+    Request,
+    Response,
+)
 from app.database import SessionLocal, get_db
 from app.models.audit import AuditLog
 from app.models.user import User

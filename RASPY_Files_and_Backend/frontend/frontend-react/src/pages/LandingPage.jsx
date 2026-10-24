@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, Grid, Card,
-  Chip, Stack, Paper, Divider
+  Chip, Stack, Paper, Divider, IconButton, Drawer,
+  List, ListItem, ListItemButton, ListItemIcon, ListItemText,
+  Dialog, DialogTitle, DialogContent, DialogActions, Tooltip
 } from '@mui/material';
 import {
   ArrowForward, Login as LoginIcon, Logout as LogoutIcon, VerifiedUser,
@@ -10,7 +12,9 @@ import {
   Dashboard as DashboardIcon, PhoneAndroid,
   Shield, CheckCircle, Videocam,
   NotificationsActive, LocationOn, Phone, Email, Policy, Gavel, Cookie as CookieIcon,
-  WarningAmber, Security, InfoOutlined, AccessTime
+  WarningAmber, Security, InfoOutlined, AccessTime,
+  Menu as MenuIcon, Close as CloseIcon, GetApp, HelpOutline,
+  Call, Smartphone, Check, DownloadDone
 } from '@mui/icons-material';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,6 +24,8 @@ export default function LandingPage() {
   const { user, logout } = useAuth();
   const [announcements, setAnnouncements] = useState([]);
   const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [installGuideOpen, setInstallGuideOpen] = useState(false);
 
   useEffect(() => {
     // Fetch live public announcements
@@ -158,7 +164,7 @@ export default function LandingPage() {
         borderBottom: '1px solid rgba(228, 232, 220, 0.8)'
       }}>
         <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 } }}>
-          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', py: { xs: 1.1, sm: 1.4 } }}>
+          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', py: { xs: 1, sm: 1.4 } }}>
 
             {/* Barangay Identity Brand */}
             <Box
@@ -179,7 +185,7 @@ export default function LandingPage() {
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1.1, color: '#b93636', letterSpacing: 0.5, fontSize: { xs: '1.05rem', sm: '1.2rem' } }}>
+                <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1.1, color: '#b93636', letterSpacing: 0.5, fontSize: { xs: '1.02rem', sm: '1.2rem' } }}>
                   BARANGAY 133
                 </Typography>
                 <Typography variant="caption" sx={{ color: '#334155', fontWeight: 650, display: 'block', fontSize: { xs: '0.68rem', sm: '0.72rem' } }}>
@@ -252,72 +258,406 @@ export default function LandingPage() {
               </Button>
             </Stack>
 
-            {/* Right User Action */}
+            {/* Right Action: Desktop buttons + Mobile Hamburger Toggle */}
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              {user ? (
-                <>
-                  <Button
-                    variant="contained"
-                    onClick={() => navigate('/dashboard')}
-                    startIcon={<DashboardIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />}
-                    sx={{
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      fontWeight: 750,
-                      px: { xs: 1.8, sm: 2.5 },
-                      py: { xs: 0.7, sm: 1 },
-                      fontSize: { xs: '0.8rem', sm: '0.9rem' },
-                      bgcolor: '#b93636',
-                      boxShadow: '0 4px 12px rgba(185, 54, 54, 0.25)',
-                      '&:hover': { bgcolor: '#8f2222' }
-                    }}
-                  >
-                    Dashboard
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    onClick={() => logout()}
-                    startIcon={<LogoutIcon sx={{ fontSize: { xs: 15, sm: 18 } }} />}
-                    sx={{
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      fontWeight: 700,
-                      px: { xs: 1.2, sm: 1.8 },
-                      py: { xs: 0.65, sm: 0.95 },
-                      fontSize: { xs: '0.78rem', sm: '0.84rem' },
-                      borderColor: '#cbd5e1',
-                      color: '#475569',
-                      '&:hover': { borderColor: '#ef4444', color: '#ef4444', bgcolor: 'rgba(239, 68, 68, 0.05)' }
-                    }}
-                  >
-                    Sign Out
-                  </Button>
-                </>
-              ) : (
+              {/* Desktop action buttons */}
+              <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1 }}>
+                {user ? (
+                  <>
+                    <Button
+                      variant="contained"
+                      onClick={() => navigate('/dashboard')}
+                      startIcon={<DashboardIcon sx={{ fontSize: 18 }} />}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 750,
+                        px: 2.2,
+                        py: 0.9,
+                        fontSize: '0.88rem',
+                        bgcolor: '#b93636',
+                        boxShadow: '0 4px 12px rgba(185, 54, 54, 0.25)',
+                        '&:hover': { bgcolor: '#8f2222' }
+                      }}
+                    >
+                      Dashboard
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={() => logout()}
+                      startIcon={<LogoutIcon sx={{ fontSize: 17 }} />}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        px: 1.6,
+                        py: 0.85,
+                        fontSize: '0.82rem',
+                        borderColor: '#cbd5e1',
+                        color: '#475569',
+                        '&:hover': { borderColor: '#ef4444', color: '#ef4444', bgcolor: 'rgba(239, 68, 68, 0.05)' }
+                      }}
+                    >
+                      Sign Out
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      component="a"
+                      href="/visiontrak.apk"
+                      download="VisionTrak_Barangay133.apk"
+                      variant="outlined"
+                      startIcon={<GetApp sx={{ fontSize: 18 }} />}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        px: 1.8,
+                        py: 0.85,
+                        fontSize: '0.84rem',
+                        borderColor: '#789f64',
+                        color: '#3f5d30',
+                        bgcolor: 'rgba(120, 159, 100, 0.08)',
+                        '&:hover': { borderColor: '#587d46', bgcolor: 'rgba(120, 159, 100, 0.16)' }
+                      }}
+                    >
+                      Download App
+                    </Button>
+                    <Button
+                      variant="contained"
+                      onClick={() => navigate('/login')}
+                      startIcon={<LoginIcon sx={{ fontSize: 18 }} />}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 750,
+                        px: 2.5,
+                        py: 0.9,
+                        fontSize: '0.88rem',
+                        bgcolor: '#b93636',
+                        boxShadow: '0 4px 14px rgba(185, 54, 54, 0.25)',
+                        '&:hover': { bgcolor: '#8f2222', transform: 'translateY(-1px)' }
+                      }}
+                    >
+                      Portal Login
+                    </Button>
+                  </>
+                )}
+              </Box>
+
+              {/* Mobile Quick Download Pill on xs */}
+              <Box sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', gap: 0.8 }}>
                 <Button
-                  variant="contained"
-                  onClick={() => navigate('/login')}
-                  startIcon={<LoginIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />}
+                  component="a"
+                  href="/visiontrak.apk"
+                  download="VisionTrak_Barangay133.apk"
+                  size="small"
+                  variant="outlined"
+                  startIcon={<GetApp sx={{ fontSize: 16 }} />}
                   sx={{
                     borderRadius: 2,
                     textTransform: 'none',
                     fontWeight: 750,
-                    px: { xs: 2, sm: 3 },
-                    py: { xs: 0.7, sm: 1 },
-                    fontSize: { xs: '0.82rem', sm: '0.9rem' },
-                    bgcolor: '#b93636',
-                    boxShadow: '0 4px 14px rgba(185, 54, 54, 0.25)',
-                    '&:hover': { bgcolor: '#8f2222', transform: 'translateY(-1px)' }
+                    px: 1.2,
+                    py: 0.6,
+                    fontSize: '0.74rem',
+                    borderColor: '#789f64',
+                    color: '#3f5d30',
+                    bgcolor: 'rgba(120, 159, 100, 0.08)'
                   }}
                 >
-                  Portal Login
+                  App APK
                 </Button>
-              )}
+              </Box>
+
+              {/* Mobile Hamburger Drawer Trigger */}
+              <IconButton
+                aria-label="Buksan ang navigasyon"
+                onClick={() => setMobileDrawerOpen(true)}
+                sx={{
+                  display: { xs: 'flex', md: 'none' },
+                  color: '#0f172a',
+                  bgcolor: '#f1f5f9',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 2,
+                  p: 0.9,
+                  '&:hover': { bgcolor: '#e2e8f0' }
+                }}
+              >
+                <MenuIcon fontSize="small" />
+              </IconButton>
             </Stack>
 
           </Stack>
         </Container>
       </Paper>
+
+      {/* Mobile Navigation Drawer for Phones & Tablets */}
+      <Drawer
+        anchor="right"
+        open={mobileDrawerOpen}
+        onClose={() => setMobileDrawerOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: '82%', sm: 340 },
+            bgcolor: '#111a10',
+            color: '#f8fafc',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            boxSizing: 'border-box'
+          }
+        }}
+      >
+        <Box sx={{ p: 2.5 }}>
+          {/* Drawer Top Header */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 2, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+              <Box
+                component="img"
+                src="/logo.png"
+                alt="Barangay 133 Seal"
+                sx={{ width: 36, height: 36, borderRadius: '50%', border: '2px solid #789f64' }}
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#ffffff', fontSize: '0.96rem', lineHeight: 1.1 }}>
+                  BARANGAY 133
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#86efac', fontWeight: 700, fontSize: '0.68rem', letterSpacing: 0.5 }}>
+                  VISION-TRAK CIVIC PORTAL
+                </Typography>
+              </Box>
+            </Box>
+            <IconButton
+              size="small"
+              onClick={() => setMobileDrawerOpen(false)}
+              sx={{ color: '#94a3b8', bgcolor: 'rgba(255,255,255,0.06)', borderRadius: 2 }}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+
+          {/* Navigation Links */}
+          <List sx={{ pt: 2, pb: 1 }}>
+            <ListItem disablePadding sx={{ mb: 0.8 }}>
+              <ListItemButton
+                component="a"
+                href="#serbisyo"
+                onClick={() => setMobileDrawerOpen(false)}
+                sx={{
+                  borderRadius: 2,
+                  py: 1.2,
+                  px: 2,
+                  bgcolor: 'rgba(255,255,255,0.03)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 36, color: '#86efac' }}>
+                  <VerifiedUser fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Mga Serbisyo"
+                  secondary="Pulisya, Tanod, Health Center"
+                  primaryTypographyProps={{ fontWeight: 750, fontSize: '0.92rem', color: '#f8fafc' }}
+                  secondaryTypographyProps={{ fontSize: '0.72rem', color: '#94a3b8' }}
+                />
+              </ListItemButton>
+            </ListItem>
+
+            <ListItem disablePadding sx={{ mb: 0.8 }}>
+              <ListItemButton
+                component="a"
+                href="#anunsyo"
+                onClick={() => setMobileDrawerOpen(false)}
+                sx={{
+                  borderRadius: 2,
+                  py: 1.2,
+                  px: 2,
+                  bgcolor: 'rgba(255,255,255,0.03)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 36, color: '#fca5a5' }}>
+                  <Campaign fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Mga Anunsyo"
+                  secondary="Opisyal na Ulat at Balita"
+                  primaryTypographyProps={{ fontWeight: 750, fontSize: '0.92rem', color: '#f8fafc' }}
+                  secondaryTypographyProps={{ fontSize: '0.72rem', color: '#94a3b8' }}
+                />
+              </ListItemButton>
+            </ListItem>
+
+            <ListItem disablePadding sx={{ mb: 0.8 }}>
+              <ListItemButton
+                component="a"
+                href="#mobile-app"
+                onClick={() => setMobileDrawerOpen(false)}
+                sx={{
+                  borderRadius: 2,
+                  py: 1.2,
+                  px: 2,
+                  bgcolor: 'rgba(120, 159, 100, 0.14)',
+                  border: '1px solid rgba(120, 159, 100, 0.3)',
+                  '&:hover': { bgcolor: 'rgba(120, 159, 100, 0.22)' }
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 36, color: '#a7f3d0' }}>
+                  <PhoneAndroid fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Resident Mobile App"
+                  secondary="I-download ang Android APK"
+                  primaryTypographyProps={{ fontWeight: 800, fontSize: '0.92rem', color: '#ffffff' }}
+                  secondaryTypographyProps={{ fontSize: '0.72rem', color: '#a7f3d0' }}
+                />
+              </ListItemButton>
+            </ListItem>
+
+            <ListItem disablePadding sx={{ mb: 0.8 }}>
+              <ListItemButton
+                component="a"
+                href="#impormasyon"
+                onClick={() => setMobileDrawerOpen(false)}
+                sx={{
+                  borderRadius: 2,
+                  py: 1.2,
+                  px: 2,
+                  bgcolor: 'rgba(255,255,255,0.03)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 36, color: '#fde047' }}>
+                  <WarningAmber fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Emergency Hotlines & CCTV"
+                  secondary="911, MPD, BFP & Transparency"
+                  primaryTypographyProps={{ fontWeight: 750, fontSize: '0.92rem', color: '#f8fafc' }}
+                  secondaryTypographyProps={{ fontSize: '0.72rem', color: '#94a3b8' }}
+                />
+              </ListItemButton>
+            </ListItem>
+
+            <ListItem disablePadding sx={{ mb: 0.8 }}>
+              <ListItemButton
+                component={Link}
+                to="/privacy-policy"
+                onClick={() => setMobileDrawerOpen(false)}
+                sx={{
+                  borderRadius: 2,
+                  py: 1.1,
+                  px: 2,
+                  bgcolor: 'rgba(255,255,255,0.03)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 36, color: '#94a3b8' }}>
+                  <Shield fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Data Privacy Policy (RA 10173)"
+                  primaryTypographyProps={{ fontWeight: 650, fontSize: '0.86rem', color: '#cbd5e1' }}
+                />
+              </ListItemButton>
+            </ListItem>
+          </List>
+        </Box>
+
+        {/* Drawer Bottom Actions: Direct App Download & Login */}
+        <Box sx={{ p: 2.5, bgcolor: 'rgba(0,0,0,0.3)', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          <Stack spacing={1.5}>
+            <Button
+              component="a"
+              href="/visiontrak.apk"
+              download="VisionTrak_Barangay133.apk"
+              variant="contained"
+              fullWidth
+              startIcon={<GetApp />}
+              sx={{
+                bgcolor: '#587d46',
+                color: '#ffffff',
+                fontWeight: 800,
+                borderRadius: 2.2,
+                py: 1.3,
+                fontSize: '0.9rem',
+                textTransform: 'none',
+                boxShadow: '0 4px 14px rgba(88, 125, 70, 0.4)',
+                '&:hover': { bgcolor: '#476837' }
+              }}
+            >
+              I-download ang Mobile App (.APK)
+            </Button>
+
+            <Button
+              component="a"
+              href="tel:911"
+              variant="outlined"
+              fullWidth
+              startIcon={<Call />}
+              sx={{
+                borderColor: 'rgba(239, 68, 68, 0.5)',
+                color: '#fca5a5',
+                fontWeight: 750,
+                borderRadius: 2.2,
+                py: 1.1,
+                fontSize: '0.86rem',
+                textTransform: 'none',
+                bgcolor: 'rgba(239, 68, 68, 0.08)',
+                '&:hover': { borderColor: '#ef4444', bgcolor: 'rgba(239, 68, 68, 0.16)' }
+              }}
+            >
+              Emergency Hotline: 911
+            </Button>
+
+            <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+
+            {user ? (
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={() => { setMobileDrawerOpen(false); navigate('/dashboard'); }}
+                startIcon={<DashboardIcon />}
+                sx={{
+                  bgcolor: '#b93636',
+                  color: '#ffffff',
+                  fontWeight: 750,
+                  borderRadius: 2.2,
+                  py: 1.1,
+                  fontSize: '0.88rem',
+                  textTransform: 'none',
+                  '&:hover': { bgcolor: '#8f2222' }
+                }}
+              >
+                Pumunta sa Dashboard
+              </Button>
+            ) : (
+              <Button
+                variant="outlined"
+                fullWidth
+                onClick={() => { setMobileDrawerOpen(false); navigate('/login'); }}
+                startIcon={<LoginIcon />}
+                sx={{
+                  borderColor: '#cbd5e1',
+                  color: '#f8fafc',
+                  fontWeight: 700,
+                  borderRadius: 2.2,
+                  py: 1.1,
+                  fontSize: '0.86rem',
+                  textTransform: 'none',
+                  '&:hover': { borderColor: '#ffffff', bgcolor: 'rgba(255,255,255,0.08)' }
+                }}
+              >
+                Portal Login (Officials & Admin)
+              </Button>
+            )}
+          </Stack>
+        </Box>
+      </Drawer>
+
 
       {/* 3. HERO SECTION WITH RICH RED CIVIC GRADIENT & BARANGAY PHOTO OVERLAY */}
       <Box id="main-content" tabIndex={-1} sx={{
@@ -408,12 +748,44 @@ export default function LandingPage() {
                 Malugod na pagdating sa opisyal na website ng Barangay 133. Madaling ma-access ang mga serbisyo publiko, makipag-ugnayan sa pamahalaang barangay, at manatiling may alam sa pinakabagong ulat at anunsyo para sa ating pamayanan.
               </Typography>
 
-              {/* High-Impact CTA Buttons - Full Width on Phone */}
+              {/* High-Impact CTA Buttons - Responsive Stacking on Mobile */}
               <Stack
                 direction={{ xs: 'column', sm: 'row' }}
                 spacing={{ xs: 1.5, sm: 2 }}
                 sx={{ mb: { xs: 3.5, md: 4.5 }, width: { xs: '100%', sm: 'auto' } }}
               >
+                {/* 1. Primary Citizen CTA: Download Resident App */}
+                <Button
+                  component="a"
+                  href="/visiontrak.apk"
+                  download="VisionTrak_Barangay133.apk"
+                  variant="contained"
+                  size="large"
+                  startIcon={<PhoneAndroid sx={{ fontSize: 20 }} />}
+                  sx={{
+                    width: { xs: '100%', sm: 'auto' },
+                    borderRadius: 2.5,
+                    px: { xs: 2.5, sm: 3.4 },
+                    py: { xs: 1.35, sm: 1.5 },
+                    fontSize: { xs: '0.92rem', sm: '0.98rem' },
+                    fontWeight: 800,
+                    textTransform: 'none',
+                    bgcolor: '#22c55e',
+                    color: '#052e16',
+                    boxShadow: '0 6px 20px rgba(34, 197, 94, 0.35)',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      bgcolor: '#16a34a',
+                      color: '#ffffff',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 8px 24px rgba(34, 197, 94, 0.45)'
+                    }
+                  }}
+                >
+                  I-download ang Mobile App
+                </Button>
+
+                {/* 2. Official / Admin Portal Login */}
                 {user ? (
                   <Button
                     variant="contained"
@@ -423,9 +795,9 @@ export default function LandingPage() {
                     sx={{
                       width: { xs: '100%', sm: 'auto' },
                       borderRadius: 2.5,
-                      px: { xs: 2.5, sm: 3.8 },
-                      py: { xs: 1.4, sm: 1.6 },
-                      fontSize: { xs: '0.95rem', sm: '1rem' },
+                      px: { xs: 2.5, sm: 3.4 },
+                      py: { xs: 1.35, sm: 1.5 },
+                      fontSize: { xs: '0.92rem', sm: '0.98rem' },
                       fontWeight: 800,
                       textTransform: 'none',
                       bgcolor: '#ffffff',
@@ -450,9 +822,9 @@ export default function LandingPage() {
                     sx={{
                       width: { xs: '100%', sm: 'auto' },
                       borderRadius: 2.5,
-                      px: { xs: 2.5, sm: 3.8 },
-                      py: { xs: 1.4, sm: 1.6 },
-                      fontSize: { xs: '0.95rem', sm: '1rem' },
+                      px: { xs: 2.5, sm: 3.4 },
+                      py: { xs: 1.35, sm: 1.5 },
+                      fontSize: { xs: '0.92rem', sm: '0.98rem' },
                       fontWeight: 800,
                       textTransform: 'none',
                       bgcolor: '#ffffff',
@@ -466,10 +838,11 @@ export default function LandingPage() {
                       }
                     }}
                   >
-                    Mag-Login sa Portal
+                    Portal Login (Staff)
                   </Button>
                 )}
 
+                {/* 3. Browse Services */}
                 <Button
                   variant="outlined"
                   size="large"
@@ -477,9 +850,9 @@ export default function LandingPage() {
                   sx={{
                     width: { xs: '100%', sm: 'auto' },
                     borderRadius: 2.5,
-                    px: { xs: 2.5, sm: 3.2 },
-                    py: { xs: 1.4, sm: 1.6 },
-                    fontSize: { xs: '0.95rem', sm: '1rem' },
+                    px: { xs: 2.5, sm: 3 },
+                    py: { xs: 1.35, sm: 1.5 },
+                    fontSize: { xs: '0.92rem', sm: '0.98rem' },
                     fontWeight: 700,
                     textTransform: 'none',
                     borderColor: 'rgba(255, 255, 255, 0.45)',
@@ -494,7 +867,7 @@ export default function LandingPage() {
                     }
                   }}
                 >
-                  Tingnan ang mga Serbisyo
+                  Tingnan ang Serbisyo
                 </Button>
               </Stack>
 
@@ -731,7 +1104,7 @@ export default function LandingPage() {
       }}>
         <Container maxWidth="lg" sx={{ px: { xs: 2.5, sm: 3, md: 4 } }}>
           <Paper elevation={0} sx={{
-            p: { xs: 2.8, sm: 4, md: 6 },
+            p: { xs: 2.8, sm: 4, md: 5.5 },
             borderRadius: { xs: 3, md: 4 },
             bgcolor: '#ffffff',
             border: '1px solid #e4e8dc',
@@ -740,14 +1113,14 @@ export default function LandingPage() {
           }}>
             <Grid container spacing={{ xs: 3, md: 4 }} sx={{ alignItems: 'center' }}>
 
-              <Grid size={{ xs: 12, md: 8 }}>
+              <Grid size={{ xs: 12, md: 7 }}>
                 <Chip
-                  icon={<PhoneAndroid sx={{ fontSize: '16px !important', color: '#7d9c65' }} />}
-                  label="PARA SA MGA RESIDENTE NG BARANGAY 133"
+                  icon={<PhoneAndroid sx={{ fontSize: '16px !important', color: '#587d46' }} />}
+                  label="PARA SA LAHAT NG RESIDENTE NG BARANGAY 133"
                   size="small"
                   sx={{
-                    bgcolor: 'rgba(125, 156, 101, 0.12)',
-                    color: '#5f7a4b',
+                    bgcolor: 'rgba(88, 125, 70, 0.12)',
+                    color: '#3f5d30',
                     fontWeight: 800,
                     fontSize: { xs: '0.68rem', sm: '0.72rem' },
                     letterSpacing: 0.5,
@@ -755,50 +1128,166 @@ export default function LandingPage() {
                   }}
                 />
 
-                <Typography variant="h4" sx={{ fontWeight: 800, color: '#1c2419', mb: 1.5, fontSize: { xs: '1.35rem', sm: '1.8rem', md: '2rem' } }}>
-                  Resident Portal & Mobile Application
+                <Typography variant="h4" sx={{ fontWeight: 800, color: '#1c2419', mb: 1.5, fontSize: { xs: '1.4rem', sm: '1.85rem', md: '2.1rem' } }}>
+                  Vision-Trak Resident Mobile Application
                 </Typography>
 
-                <Typography variant="body1" sx={{ color: '#556350', lineHeight: 1.65, fontSize: { xs: '0.88rem', sm: '0.98rem' }, mb: 2.5 }}>
-                  Ang pagsusuri ng real-time garbage truck alerts, pagsumite ng reklamo o mungkahi, at pagbasa ng mga opisyal na anunsyo ay maaari nang ma-access direkta sa portal na ito o sa mobile app. Ang mga resident account ay opisyal na inirerehistro at bineripika ng Pamahalaang Barangay sa Barangay Hall.
+                <Typography variant="body1" sx={{ color: '#556350', lineHeight: 1.65, fontSize: { xs: '0.9rem', sm: '0.98rem' }, mb: 2.5 }}>
+                  Dinisenyo para sa kaginhawahan ng bawat residente ng Barangay 133. Direktang makatanggap ng real-time AI alert kapag papalapit na ang trak ng basura, magsumite ng reklamo o mungkahi kalakip ang larawan, at basahin ang mga anunsyo ng pamahalaang barangay.
                 </Typography>
 
+                {/* Mobile Feature Checklist */}
+                <Stack spacing={1.2} sx={{ mb: 3.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                    <Box sx={{ width: 22, height: 22, borderRadius: '50%', bgcolor: 'rgba(88, 125, 70, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Check sx={{ color: '#587d46', fontSize: 15, fontWeight: 900 }} />
+                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 650, color: '#334155', fontSize: '0.88rem' }}>
+                      <strong>Real-Time Waste Truck Alerts:</strong> Push notification kapag nasa inyong kalye na ang trak ng basura.
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                    <Box sx={{ width: 22, height: 22, borderRadius: '50%', bgcolor: 'rgba(88, 125, 70, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Check sx={{ color: '#587d46', fontSize: 15, fontWeight: 900 }} />
+                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 650, color: '#334155', fontSize: '0.88rem' }}>
+                      <strong>Photo Grievance & Feedback:</strong> Kumuha ng litrato at ipadala ang reklamo o suhestiyon sa Barangay Hall.
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                    <Box sx={{ width: 22, height: 22, borderRadius: '50%', bgcolor: 'rgba(88, 125, 70, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Check sx={{ color: '#587d46', fontSize: 15, fontWeight: 900 }} />
+                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 650, color: '#334155', fontSize: '0.88rem' }}>
+                      <strong>Opisyal na Komunidad:</strong> Mga verified resident account na nirehistro sa pamahalaan.
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                {/* Direct Action Buttons - Touch friendly on mobile */}
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
                   <Button
+                    component="a"
+                    href="/visiontrak.apk"
+                    download="VisionTrak_Barangay133.apk"
                     variant="contained"
-                    onClick={() => navigate(user ? '/dashboard' : '/login')}
+                    size="large"
+                    startIcon={<GetApp sx={{ fontSize: 20 }} />}
                     sx={{
-                      bgcolor: '#7d9c65',
-                      '&:hover': { bgcolor: '#5f7a4b' },
-                      fontWeight: 750,
+                      bgcolor: '#587d46',
+                      '&:hover': { bgcolor: '#446435' },
+                      fontWeight: 800,
                       textTransform: 'none',
-                      borderRadius: 2,
-                      px: 3,
-                      py: 1
+                      borderRadius: 2.2,
+                      px: 3.2,
+                      py: 1.3,
+                      fontSize: '0.92rem',
+                      boxShadow: '0 4px 14px rgba(88, 125, 70, 0.35)',
+                      width: { xs: '100%', sm: 'auto' }
                     }}
                   >
-                    {user ? 'Buksan ang Resident Portal' : 'Mag-login sa Resident Portal'}
+                    I-download ang Android APK (.APK)
+                  </Button>
+
+                  <Button
+                    variant="outlined"
+                    size="large"
+                    onClick={() => setInstallGuideOpen(true)}
+                    startIcon={<HelpOutline sx={{ fontSize: 19 }} />}
+                    sx={{
+                      borderColor: '#cbd5e1',
+                      color: '#475569',
+                      fontWeight: 700,
+                      textTransform: 'none',
+                      borderRadius: 2.2,
+                      px: 2.5,
+                      py: 1.3,
+                      fontSize: '0.92rem',
+                      '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+                      width: { xs: '100%', sm: 'auto' }
+                    }}
+                  >
+                    Gabay sa Pag-Install
                   </Button>
                 </Stack>
               </Grid>
 
-              <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: { xs: 'center', md: 'right' } }}>
+              {/* Right Column: Smartphone Visual Showcase Card */}
+              <Grid size={{ xs: 12, md: 5 }}>
                 <Box sx={{
-                  p: { xs: 2.5, sm: 3 },
-                  borderRadius: 3,
-                  bgcolor: '#f7f8f4',
-                  border: '1px solid #e4e8dc',
-                  display: 'inline-block',
-                  textAlign: 'center',
-                  width: { xs: '100%', md: 'auto' }
+                  p: { xs: 2.5, sm: 3.5 },
+                  borderRadius: 3.5,
+                  bgcolor: 'linear-gradient(180deg, #162415 0%, #0d150c 100%)',
+                  background: 'linear-gradient(180deg, #162415 0%, #0d150c 100%)',
+                  border: '1px solid rgba(120, 159, 100, 0.3)',
+                  boxShadow: '0 12px 32px rgba(15, 23, 42, 0.15)',
+                  color: '#ffffff',
+                  textAlign: 'center'
                 }}>
-                  <PhoneAndroid sx={{ fontSize: { xs: 36, sm: 44 }, color: '#7d9c65', mb: 0.8 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#1c2419', fontSize: { xs: '0.92rem', sm: '1rem' } }}>
-                    Available sa Android & iOS
+                  <Box sx={{
+                    width: 64,
+                    height: 64,
+                    mx: 'auto',
+                    mb: 1.8,
+                    borderRadius: '50%',
+                    bgcolor: 'rgba(120, 159, 100, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid rgba(120, 159, 100, 0.5)'
+                  }}>
+                    <Smartphone sx={{ fontSize: 32, color: '#86efac' }} />
+                  </Box>
+
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: '#ffffff', mb: 0.5, fontSize: '1.15rem' }}>
+                    Barangay 133 Mobile App
                   </Typography>
-                  <Typography variant="caption" sx={{ color: '#556350', display: 'block', mt: 0.5, fontSize: '0.75rem' }}>
-                    Opisyal na Mobile App ng Residente
+
+                  <Typography variant="caption" sx={{ color: '#86efac', fontWeight: 700, display: 'block', mb: 2, letterSpacing: 0.5 }}>
+                    OPISYAL NA RESIDENT APPLICATION
                   </Typography>
+
+                  <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 2 }} />
+
+                  <Stack spacing={1.2} sx={{ mb: 2.5, textAlign: 'left' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>Platform:</Typography>
+                      <Chip label="Android 8.0+" size="small" sx={{ height: 20, fontSize: '0.7rem', bgcolor: 'rgba(255,255,255,0.08)', color: '#ffffff', fontWeight: 700 }} />
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>Package Size:</Typography>
+                      <Typography variant="caption" sx={{ color: '#ffffff', fontWeight: 700 }}>54 MB (.apk)</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>Release Build:</Typography>
+                      <Typography variant="caption" sx={{ color: '#86efac', fontWeight: 700 }}>v1.0.0 Production</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>Status:</Typography>
+                      <Chip label="Verified Safe" size="small" sx={{ height: 20, fontSize: '0.7rem', bgcolor: 'rgba(34, 197, 94, 0.2)', color: '#86efac', fontWeight: 800 }} />
+                    </Box>
+                  </Stack>
+
+                  <Button
+                    component="a"
+                    href="/visiontrak.apk"
+                    download="VisionTrak_Barangay133.apk"
+                    fullWidth
+                    variant="contained"
+                    startIcon={<GetApp />}
+                    sx={{
+                      bgcolor: '#22c55e',
+                      color: '#052e16',
+                      fontWeight: 800,
+                      py: 1.1,
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontSize: '0.86rem',
+                      '&:hover': { bgcolor: '#16a34a', color: '#ffffff' }
+                    }}
+                  >
+                    I-download Ngayon
+                  </Button>
                 </Box>
               </Grid>
 
@@ -1029,39 +1518,101 @@ export default function LandingPage() {
                 </Stack>
 
                 <Stack spacing={1.5} sx={{ color: '#334155' }}>
-                  <Box sx={{ p: 1.5, bgcolor: '#fef2f2', borderRadius: 2, border: '1px solid #fecaca' }}>
-                    <Typography variant="caption" sx={{ color: '#991b1b', fontWeight: 800, display: 'block' }}>
-                      PAMBANSANG EMERGENCY HOTLINE
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 900, color: '#b91c1c' }}>
-                      911
-                    </Typography>
+                  {/* National Emergency 911 */}
+                  <Box
+                    component="a"
+                    href="tel:911"
+                    sx={{
+                      textDecoration: 'none',
+                      display: 'block',
+                      p: 1.8,
+                      bgcolor: '#fef2f2',
+                      borderRadius: 2.5,
+                      border: '1px solid #fecaca',
+                      transition: 'all 0.2s',
+                      boxShadow: '0 2px 8px rgba(220, 38, 38, 0.08)',
+                      '&:hover': { bgcolor: '#fee2e2', transform: 'translateY(-1px)', borderColor: '#ef4444' }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box>
+                        <Typography variant="caption" sx={{ color: '#991b1b', fontWeight: 800, display: 'block', letterSpacing: 0.5 }}>
+                          PAMBANSANG EMERGENCY HOTLINE
+                        </Typography>
+                        <Typography variant="h4" sx={{ fontWeight: 900, color: '#b91c1c', display: 'flex', alignItems: 'center', gap: 1, my: 0.2 }}>
+                          <Call sx={{ fontSize: 28 }} /> 911
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#b91c1c', fontWeight: 650 }}>
+                          Pindutin para tumawag agad (24/7 Libre)
+                        </Typography>
+                      </Box>
+                      <Chip label="TAP TO CALL" size="small" sx={{ bgcolor: '#dc2626', color: '#ffffff', fontWeight: 800, fontSize: '0.68rem', letterSpacing: 0.5 }} />
+                    </Box>
                   </Box>
 
-                  <Box sx={{ p: 1.4, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
-                    <Typography variant="caption" sx={{ color: '#475569', fontWeight: 750, display: 'block' }}>
-                      PHILIPPINE NATIONAL POLICE / MANILA POLICE DISTRICT
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 800, color: '#0f172a' }}>
-                      117 / (02) 8245-2244 (MPD Station 2)
-                    </Typography>
+                  {/* Philippine National Police MPD */}
+                  <Box
+                    component="a"
+                    href="tel:0282452244"
+                    sx={{
+                      textDecoration: 'none',
+                      display: 'block',
+                      p: 1.6,
+                      bgcolor: '#f8fafc',
+                      borderRadius: 2.2,
+                      border: '1px solid #e2e8f0',
+                      transition: 'all 0.2s',
+                      '&:hover': { bgcolor: '#f1f5f9', borderColor: '#cbd5e1' }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box>
+                        <Typography variant="caption" sx={{ color: '#475569', fontWeight: 750, display: 'block' }}>
+                          PNP MANILA POLICE DISTRICT (STATION 2)
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 0.8, mt: 0.3 }}>
+                          <Phone sx={{ fontSize: 18, color: '#0284c7' }} /> (02) 8245-2244 / 117
+                        </Typography>
+                      </Box>
+                      <Chip label="Call MPD" size="small" variant="outlined" sx={{ color: '#0284c7', borderColor: '#bae6fd', fontWeight: 750, fontSize: '0.68rem' }} />
+                    </Box>
                   </Box>
 
-                  <Box sx={{ p: 1.4, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
-                    <Typography variant="caption" sx={{ color: '#475569', fontWeight: 750, display: 'block' }}>
-                      BUREAU OF FIRE PROTECTION (BFP)
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 800, color: '#0f172a' }}>
-                      (02) 8527-3627
-                    </Typography>
+                  {/* Bureau of Fire Protection */}
+                  <Box
+                    component="a"
+                    href="tel:0285273627"
+                    sx={{
+                      textDecoration: 'none',
+                      display: 'block',
+                      p: 1.6,
+                      bgcolor: '#f8fafc',
+                      borderRadius: 2.2,
+                      border: '1px solid #e2e8f0',
+                      transition: 'all 0.2s',
+                      '&:hover': { bgcolor: '#f1f5f9', borderColor: '#cbd5e1' }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box>
+                        <Typography variant="caption" sx={{ color: '#475569', fontWeight: 750, display: 'block' }}>
+                          BUREAU OF FIRE PROTECTION (BFP MAYNILA)
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 0.8, mt: 0.3 }}>
+                          <Phone sx={{ fontSize: 18, color: '#dc2626' }} /> (02) 8527-3627
+                        </Typography>
+                      </Box>
+                      <Chip label="Call BFP" size="small" variant="outlined" sx={{ color: '#dc2626', borderColor: '#fecaca', fontWeight: 750, fontSize: '0.68rem' }} />
+                    </Box>
                   </Box>
 
-                  <Box sx={{ p: 1.4, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0' }}>
-                    <Typography variant="caption" sx={{ color: '#166534', fontWeight: 750, display: 'block' }}>
-                      OPISYAL NA TRANSAKSYON SA BARANGAY
+                  {/* Official Transaction Notice */}
+                  <Box sx={{ p: 1.6, bgcolor: '#f0fdf4', borderRadius: 2.2, border: '1px solid #bbf7d0' }}>
+                    <Typography variant="caption" sx={{ color: '#166534', fontWeight: 750, display: 'block', mb: 0.3 }}>
+                      OPISYAL NA TRANSAKSYON SA BARANGAY HALL
                     </Typography>
-                    <Typography variant="body2" sx={{ color: '#15803d', fontWeight: 650 }}>
-                      Para sa mga clearances, katanungan, at katarungang pambarangay, mangyaring magtungo sa opisyal na Barangay Hall o magsumite ng mensahe sa pamamagitan ng portal at mobile app.
+                    <Typography variant="body2" sx={{ color: '#15803d', fontWeight: 650, fontSize: '0.84rem' }}>
+                      Para sa mga Barangay Clearance, Certificate of Indigency, at Katarungang Pambarangay, magtungo sa Barangay 133 Hall (Lunes-Biyernes, 8:00 AM - 5:00 PM) o magsumite sa Resident Mobile App.
                     </Typography>
                   </Box>
                 </Stack>
@@ -1204,6 +1755,241 @@ export default function LandingPage() {
 
         </Container>
       </Box>
+
+      {/* 9. Mobile Sticky Bottom Quick-Action Bar (Phones & Small Tablets) */}
+      <Paper
+        elevation={6}
+        sx={{
+          display: { xs: 'flex', md: 'none' },
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1050,
+          bgcolor: 'rgba(17, 26, 16, 0.94)',
+          backdropFilter: 'blur(16px)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          px: 1,
+          py: 0.8,
+          pb: 'max(8px, env(safe-area-inset-bottom))',
+          justifyContent: 'space-around',
+          alignItems: 'center',
+        }}
+      >
+        <Button
+          component="a"
+          href="tel:911"
+          sx={{
+            flexDirection: 'column',
+            color: '#fca5a5',
+            minWidth: 64,
+            py: 0.5,
+            px: 1,
+            borderRadius: 2,
+            textTransform: 'none',
+            fontSize: '0.72rem',
+            fontWeight: 750,
+            '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.12)' },
+          }}
+        >
+          <Call sx={{ fontSize: 20, mb: 0.2, color: '#ef4444' }} />
+          Hotline 911
+        </Button>
+
+        <Button
+          component="a"
+          href="#anunsyo"
+          sx={{
+            flexDirection: 'column',
+            color: '#f8fafc',
+            minWidth: 64,
+            py: 0.5,
+            px: 1,
+            borderRadius: 2,
+            textTransform: 'none',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.08)' },
+          }}
+        >
+          <Campaign sx={{ fontSize: 20, mb: 0.2, color: '#fca5a5' }} />
+          Anunsyo
+        </Button>
+
+        <Button
+          component="a"
+          href="/visiontrak.apk"
+          download="VisionTrak_Barangay133.apk"
+          sx={{
+            flexDirection: 'column',
+            color: '#86efac',
+            minWidth: 72,
+            py: 0.5,
+            px: 1,
+            borderRadius: 2,
+            textTransform: 'none',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            bgcolor: 'rgba(34, 197, 94, 0.15)',
+            border: '1px solid rgba(34, 197, 94, 0.35)',
+            '&:hover': { bgcolor: 'rgba(34, 197, 94, 0.25)' },
+          }}
+        >
+          <GetApp sx={{ fontSize: 20, mb: 0.2, color: '#22c55e' }} />
+          App APK
+        </Button>
+
+        <Button
+          onClick={() => navigate(user ? '/dashboard' : '/login')}
+          sx={{
+            flexDirection: 'column',
+            color: '#f8fafc',
+            minWidth: 64,
+            py: 0.5,
+            px: 1,
+            borderRadius: 2,
+            textTransform: 'none',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.08)' },
+          }}
+        >
+          {user ? (
+            <>
+              <DashboardIcon sx={{ fontSize: 20, mb: 0.2, color: '#bbf7d0' }} />
+              Dashboard
+            </>
+          ) : (
+            <>
+              <LoginIcon sx={{ fontSize: 20, mb: 0.2, color: '#f87171' }} />
+              Staff Login
+            </>
+          )}
+        </Button>
+      </Paper>
+
+      {/* 10. APK Installation Guide Dialog for Mobile Users */}
+      <Dialog
+        open={installGuideOpen}
+        onClose={() => setInstallGuideOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3.5,
+            p: { xs: 1, sm: 2 },
+            bgcolor: '#ffffff',
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center' }}>
+            <Box sx={{ p: 1, borderRadius: 2, bgcolor: 'rgba(88, 125, 70, 0.12)', color: '#587d46' }}>
+              <PhoneAndroid />
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a', fontSize: '1.1rem' }}>
+                Gabay sa Pag-Install ng Mobile App
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#64748b' }}>
+                Vision-Trak Android Application para sa mga Residente
+              </Typography>
+            </Box>
+          </Stack>
+          <IconButton size="small" onClick={() => setInstallGuideOpen(false)}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers sx={{ py: 2.5 }}>
+          <Stack spacing={2.5}>
+            {/* Step 1 */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+              <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: '#587d46', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, flexShrink: 0 }}>
+                1
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 750, color: '#0f172a' }}>
+                  I-download ang Opisyal na APK
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#475569', fontSize: '0.86rem', mt: 0.3 }}>
+                  Pindutin ang <strong>"I-download ang Android APK"</strong> button. Mag-uumpisa agad ang pag-download ng <code>VisionTrak_Barangay133.apk</code> file sa inyong smartphone.
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Step 2 */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+              <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: '#587d46', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, flexShrink: 0 }}>
+                2
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 750, color: '#0f172a' }}>
+                  Pahintulutan ang Pag-Install (Unknown Sources)
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#475569', fontSize: '0.86rem', mt: 0.3 }}>
+                  Kung magtanong ang Chrome o inyong browser ng <em>"File might be harmful"</em> o <em>"Install unknown apps"</em>, piliin ang <strong>"Download anyway"</strong> at <strong>"Allow from this source"</strong>. Ligtas at beripikado ang opisyal na app ng pamahalaan.
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Step 3 */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+              <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: '#587d46', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, flexShrink: 0 }}>
+                3
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 750, color: '#0f172a' }}>
+                  I-tap ang "Install" at Buksan ang App
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#475569', fontSize: '0.86rem', mt: 0.3 }}>
+                  Kapag tapos na ang download sa Notifications o Downloads folder, i-tap ang file at piliin ang <strong>"Install"</strong>. Pagkatapos ay pindutin ang <strong>"Open"</strong>.
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Step 4 */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+              <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: '#587d46', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, flexShrink: 0 }}>
+                4
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 750, color: '#0f172a' }}>
+                  Mag-Login Gamit ang Inyong Resident Account
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#475569', fontSize: '0.86rem', mt: 0.3 }}>
+                  Ipasok ang username at password na ibinigay sa inyo sa Barangay Hall. Kung wala pa kayong account, magtungo sa Barangay 133 Hall dala ang valid ID para makuha ang inyong resident login.
+                </Typography>
+              </Box>
+            </Box>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button
+            component="a"
+            href="/visiontrak.apk"
+            download="VisionTrak_Barangay133.apk"
+            variant="contained"
+            startIcon={<GetApp />}
+            onClick={() => setInstallGuideOpen(false)}
+            sx={{
+              bgcolor: '#587d46',
+              fontWeight: 800,
+              textTransform: 'none',
+              borderRadius: 2,
+              px: 3,
+              py: 1,
+              '&:hover': { bgcolor: '#446435' }
+            }}
+          >
+            I-download ang APK File Ngayon
+          </Button>
+          <Button onClick={() => setInstallGuideOpen(false)} sx={{ color: '#64748b' }}>
+            Isara
+          </Button>
+        </DialogActions>
+      </Dialog>
 
     </Box>
   );

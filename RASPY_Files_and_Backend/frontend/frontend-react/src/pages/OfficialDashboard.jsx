@@ -113,10 +113,10 @@ export default function OfficialDashboard() {
   return (
     <Box sx={{ py: 1 }} className="animate-fade-in">
       {/* Header section with clean visual hierarchy */}
-      <Box sx={{ mb: 4, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 2 }}>
+      <Box sx={{ mb: { xs: 2.5, sm: 4 }, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 1.5 }}>
         <Box>
-          <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center', mb: 0.8 }}>
-            <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
+          <Stack direction="row" spacing={1.2} sx={{ alignItems: 'center', mb: 0.8, flexWrap: 'wrap' }}>
+            <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', fontSize: { xs: '1.4rem', sm: '1.8rem', md: '2.1rem' } }}>
               Official Operations Dashboard
             </Typography>
             <Chip
@@ -125,7 +125,7 @@ export default function OfficialDashboard() {
               sx={{ bgcolor: 'rgba(88, 125, 70, 0.12)', color: '#3f5d30', fontWeight: 750, fontSize: '0.72rem', border: '1px solid rgba(88, 125, 70, 0.25)' }}
             />
           </Stack>
-          <Typography variant="body2" sx={{ color: '#64748b', fontSize: '0.92rem' }}>
+          <Typography variant="body2" sx={{ color: '#64748b', fontSize: { xs: '0.84rem', sm: '0.92rem' } }}>
             Real-time community announcements, resident complaints & feedback, and live vision tracking stream.
           </Typography>
         </Box>
@@ -221,10 +221,10 @@ export default function OfficialDashboard() {
       </Box>
 
       {/* SECTION 2: Split Columns */}
-      <Grid container spacing={3} sx={{ alignItems: 'flex-start' }}>
+      <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ alignItems: 'flex-start' }}>
         {/* Left Column: Recent Resident Feedback */}
         <Grid size={{ xs: 12, md: 7 }}>
-          <Paper sx={{ p: 3.5, bgcolor: '#ffffff', borderRadius: 3.5, border: '1px solid rgba(226, 232, 240, 0.85)', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 4px 16px rgba(15, 23, 42, 0.03)' }}>
+          <Paper sx={{ p: { xs: 2, sm: 2.8, md: 3.5 }, bgcolor: '#ffffff', borderRadius: 3.5, border: '1px solid rgba(226, 232, 240, 0.85)', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 4px 16px rgba(15, 23, 42, 0.03)' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, pb: 1.5, borderBottom: '1px solid #f1f5f9' }}>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                 <FeedbackIcon sx={{ color: '#d97706', fontSize: 22 }} />
@@ -285,7 +285,7 @@ export default function OfficialDashboard() {
 
         {/* Right Column: Live Vision-Trak Camera Status */}
         <Grid size={{ xs: 12, md: 5 }}>
-          <Paper sx={{ p: 3.5, bgcolor: '#ffffff', borderRadius: 3.5, border: '1px solid rgba(226, 232, 240, 0.85)', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 4px 16px rgba(15, 23, 42, 0.03)' }}>
+          <Paper sx={{ p: { xs: 2, sm: 2.8, md: 3.5 }, bgcolor: '#ffffff', borderRadius: 3.5, border: '1px solid rgba(226, 232, 240, 0.85)', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 4px 16px rgba(15, 23, 42, 0.03)' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, pb: 1.5, borderBottom: '1px solid #f1f5f9' }}>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                 <Videocam sx={{ color: '#16a34a', fontSize: 22 }} />

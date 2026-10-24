@@ -260,6 +260,7 @@ export default function Residents() {
           startIcon={<PersonAdd />}
           onClick={() => openForm(null)}
           sx={{
+            width: { xs: '100%', sm: 'auto' },
             bgcolor: '#587d46',
             '&:hover': { bgcolor: '#496b39' },
             fontWeight: 750,
@@ -275,7 +276,7 @@ export default function Residents() {
       </Box>
 
       {/* Search Bar & Actions */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, gap: 2 }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, mb: 2.5, gap: 1.5 }}>
         <TextField
           placeholder="Search by resident name..."
           size="small"
@@ -323,27 +324,31 @@ export default function Residents() {
         border: '1px solid rgba(226, 232, 240, 0.85)',
         boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 4px 16px rgba(15, 23, 42, 0.03)',
         overflow: 'hidden',
-        p: 1.5,
+        p: { xs: 1, sm: 1.5 },
       }}>
-        <DataGrid
-          rows={filtered}
-          columns={columns}
-          getRowId={(r) => r.resident_id}
-          loading={loading}
-          autoHeight
-          pageSizeOptions={[10, 25, 50]}
-          initialState={{
-            pagination: { paginationModel: { pageSize: 10 } },
-          }}
-          disableRowSelectionOnClick
-          sx={{
-            border: 'none',
-            '& .MuiDataGrid-cell': {
-              display: 'flex',
-              alignItems: 'center',
-            },
-          }}
-        />
+        <Box sx={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <Box sx={{ minWidth: 700 }}>
+            <DataGrid
+              rows={filtered}
+              columns={columns}
+              getRowId={(r) => r.resident_id}
+              loading={loading}
+              autoHeight
+              pageSizeOptions={[10, 25, 50]}
+              initialState={{
+                pagination: { paginationModel: { pageSize: 10 } },
+              }}
+              disableRowSelectionOnClick
+              sx={{
+                border: 'none',
+                '& .MuiDataGrid-cell': {
+                  display: 'flex',
+                  alignItems: 'center',
+                },
+              }}
+            />
+          </Box>
+        </Box>
       </Paper>
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>

@@ -212,6 +212,23 @@ def health_check():
     return {"status": "ok"}
 
 
+@app.get("/download/app")
+@app.get("/api/download/app")
+def download_mobile_app():
+    apk_paths = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "frontend", "frontend-react", "public", "visiontrak.apk"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "frontend", "flutter_app", "build", "app", "outputs", "flutter-apk", "app-release.apk"),
+    ]
+    for p in apk_paths:
+        if os.path.exists(p):
+            return FileResponse(
+                p,
+                media_type="application/vnd.android.package-archive",
+                filename="VisionTrak_Barangay133.apk"
+            )
+    raise HTTPException(status_code=404, detail="Mobile application package is currently being generated. Please contact the Barangay Hall.")
+
+
 @app.post("/api/users/heartbeat")
 def user_heartbeat(
     db: Session = Depends(get_db),

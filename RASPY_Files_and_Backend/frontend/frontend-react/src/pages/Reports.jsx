@@ -75,54 +75,90 @@ export default function Reports() {
   };
 
   return (
-    <Box>
-      <Typography variant="h4" sx={{ fontWeight: 600, mb: 3 }}>Reports</Typography>
+    <Box sx={{ py: 1 }} className="animate-fade-in">
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', fontSize: { xs: '1.4rem', sm: '1.8rem', md: '2.1rem' } }}>
+          Official Barangay Reports
+        </Typography>
+        <Typography variant="body2" sx={{ color: '#64748b', mt: 0.4, fontSize: { xs: '0.84rem', sm: '0.92rem' } }}>
+          Generate, export, and download comprehensive records for executive audits and community compliance.
+        </Typography>
+      </Box>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <PdfIcon /> Generate Report
+      <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3, borderRadius: 3.5, border: '1px solid rgba(226, 232, 240, 0.85)', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 4px 16px rgba(15, 23, 42, 0.03)' }}>
+        <Typography variant="h6" sx={{ fontWeight: 750, color: '#0f172a', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontSize: '1.05rem' }}>
+          <PdfIcon sx={{ color: '#b93636' }} /> Generate Custom Report
         </Typography>
         <Divider sx={{ mb: 2 }} />
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <TextField size="small" label="Report Title (optional)" value={form.title}
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <TextField
+            size="small"
+            label="Report Title (optional)"
+            value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
             placeholder="e.g. September 2026 Announcements"
-            sx={{ minWidth: 250 }} />
-          <FormControl size="small" sx={{ minWidth: 180 }}>
+            sx={{ flex: { xs: '1 1 100%', sm: '1 1 240px' } }}
+          />
+          <FormControl size="small" sx={{ flex: { xs: '1 1 100%', sm: '1 1 160px' } }}>
             <InputLabel>Report Type</InputLabel>
             <Select value={form.report_type} label="Report Type" onChange={(e) => setForm({ ...form, report_type: e.target.value })}>
               {reportTypes.map((t) => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
             </Select>
           </FormControl>
-          <FormControl size="small" sx={{ minWidth: 120 }}>
+          <FormControl size="small" sx={{ flex: { xs: '1 1 48%', sm: '0 1 110px' } }}>
             <InputLabel>Format</InputLabel>
             <Select value={form.file_format} label="Format" onChange={(e) => setForm({ ...form, file_format: e.target.value })}>
               {formatOptions.map((f) => <MenuItem key={f.value} value={f.value}>{f.label}</MenuItem>)}
             </Select>
           </FormControl>
-          <TextField size="small" type="date" label="Start Date" value={form.start_date}
+          <TextField
+            size="small"
+            type="date"
+            label="Start Date"
+            value={form.start_date}
             onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-            slotProps={{ inputLabel: { shrink: true } }} />
-          <TextField size="small" type="date" label="End Date" value={form.end_date}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ flex: { xs: '1 1 48%', sm: '0 1 150px' } }}
+          />
+          <TextField
+            size="small"
+            type="date"
+            label="End Date"
+            value={form.end_date}
             onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-            slotProps={{ inputLabel: { shrink: true } }} />
-          <Button variant="contained" onClick={generate} disabled={generating}>
-            {generating ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ flex: { xs: '1 1 48%', sm: '0 1 150px' } }}
+          />
+          <Button
+            variant="contained"
+            onClick={generate}
+            disabled={generating}
+            sx={{
+              width: { xs: '100%', sm: 'auto' },
+              bgcolor: '#587d46',
+              '&:hover': { bgcolor: '#446435' },
+              fontWeight: 750,
+              borderRadius: 2,
+              py: 1,
+              px: 2.5
+            }}
+          >
+            {generating ? <CircularProgress size={20} sx={{ mr: 1, color: '#ffffff' }} /> : null}
             Generate {form.file_format === 'docx' ? 'DOCX' : 'PDF'}
           </Button>
         </Box>
       </Paper>
 
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3.5, border: '1px solid rgba(226, 232, 240, 0.85)', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 4px 16px rgba(15, 23, 42, 0.03)' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>Generated Reports</Typography>
-          <Button size="small" startIcon={<RefreshIcon />} onClick={fetch} disabled={loading}>Refresh</Button>
+          <Typography variant="h6" sx={{ fontWeight: 750, color: '#0f172a', fontSize: '1.05rem' }}>Generated Reports Archive</Typography>
+          <Button size="small" startIcon={<RefreshIcon />} onClick={fetch} disabled={loading} sx={{ fontWeight: 650 }}>Refresh</Button>
         </Box>
         {loading ? <CircularProgress /> : reports.length === 0 ? (
           <Typography color="text.secondary">No reports generated yet.</Typography>
         ) : (
-          <TableContainer>
-            <Table size="small">
+          <TableContainer sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <Table size="small" sx={{ minWidth: 650 }}>
               <TableHead>
                 <TableRow>
                   <TableCell>Title</TableCell>

@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/feedback_model.dart';
 import '../providers/feedback_provider.dart';
+import '../theme/app_theme.dart';
 
 class FeedbackScreen extends StatefulWidget {
-  const FeedbackScreen({super.key});
+  /// When [embedded] is true, the screen renders inside the Dashboard tab body.
+  final bool embedded;
+
+  const FeedbackScreen({super.key, this.embedded = false});
 
   @override
   State<FeedbackScreen> createState() => _FeedbackScreenState();
@@ -13,26 +17,19 @@ class FeedbackScreen extends StatefulWidget {
 
 class _FeedbackScreenState extends State<FeedbackScreen>
     with SingleTickerProviderStateMixin {
-  static const Color _primaryGreen = Color(0xFF587D46);
-  static const Color _darkGreen = Color(0xFF3F5D30);
-  static const Color _canvas = Color(0xFFF8FAFC);
-  static const Color _cardBorder = Color(0xFFE2E8F0);
-  static const Color _textDark = Color(0xFF0F172A);
-  static const Color _textMuted = Color(0xFF64748B);
-
   late TabController _tabController;
 
-  final _subjectCtrl = TextEditingController();
-  final _contentCtrl = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
-  List<PlatformFile> _attachments = [];
+  final _subjectCtrl  = TextEditingController();
+  final _contentCtrl  = TextEditingController();
+  final _formKey      = GlobalKey<FormState>();
+  List<PlatformFile> _attachments  = [];
   String? _selectedCategory;
 
   final List<Map<String, dynamic>> _quickCategories = [
-    {'title': 'Sanitation / Waste', 'icon': Icons.delete_outline_rounded},
-    {'title': 'Noise / Peace & Order', 'icon': Icons.volume_off_rounded},
-    {'title': 'Public Facilities', 'icon': Icons.handyman_rounded},
-    {'title': 'General Suggestion', 'icon': Icons.lightbulb_outline_rounded},
+    {'title': 'Sanitation / Waste',       'icon': Icons.delete_outline_rounded},
+    {'title': 'Noise / Peace & Order',    'icon': Icons.volume_off_rounded},
+    {'title': 'Public Facilities',        'icon': Icons.handyman_rounded},
+    {'title': 'General Suggestion',       'icon': Icons.lightbulb_outline_rounded},
   ];
 
   @override
@@ -68,32 +65,24 @@ class _FeedbackScreenState extends State<FeedbackScreen>
         withData: true,
       );
       if (result != null && mounted) {
-        final oversized = result.files.where(
-          (file) => file.size > 10 * 1024 * 1024,
-        );
-        final accepted = result.files
-            .where((file) => file.size <= 10 * 1024 * 1024)
-            .toList();
-        final availableSlots = 10 - _attachments.length;
-        if (oversized.isNotEmpty || accepted.length > availableSlots) {
+        final oversized = result.files.where((f) => f.size > 10 * 1024 * 1024);
+        final accepted  = result.files.where((f) => f.size <= 10 * 1024 * 1024).toList();
+        final slots     = 10 - _attachments.length;
+        if (oversized.isNotEmpty || accepted.length > slots) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text(
-                'You may only select up to 10 files (maximum 10 MB each).',
-              ),
-              backgroundColor: _primaryGreen,
+              content: Text('Max 10 files, each up to 10 MB.'),
+              backgroundColor: AppTheme.primaryGreen,
             ),
           );
         }
-        setState(() {
-          _attachments = [..._attachments, ...accepted.take(availableSlots)];
-        });
+        setState(() => _attachments = [..._attachments, ...accepted.take(slots)]);
       }
-    } catch (error) {
+    } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to select file: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to select file: $e')),
+      );
     }
   }
 
@@ -102,33 +91,32 @@ class _FeedbackScreenState extends State<FeedbackScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        ),
         title: const Row(
           children: [
-            Icon(Icons.send_rounded, color: _primaryGreen, size: 22),
+            Icon(Icons.send_rounded, color: AppTheme.primaryGreen, size: 22),
             SizedBox(width: 8),
-            Text(
-              'Confirm Submission',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
+            Text('Confirm Submission',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
           ],
         ),
         content: const Text(
-          'Are you sure you want to submit this report or suggestion to the Barangay 133 administration?',
-          style: TextStyle(fontSize: 14, color: _textDark),
+          'Submit this concern to Barangay 133 administration?',
+          style: TextStyle(fontSize: 14, color: AppTheme.textBody),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            style: TextButton.styleFrom(foregroundColor: _textMuted),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: _primaryGreen,
+              backgroundColor: AppTheme.primaryGreen,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               ),
             ),
             onPressed: () async {
@@ -143,18 +131,13 @@ class _FeedbackScreenState extends State<FeedbackScreen>
               if (ok) {
                 _subjectCtrl.clear();
                 _contentCtrl.clear();
-                setState(() {
-                  _attachments = [];
-                  _selectedCategory = null;
-                });
+                setState(() { _attachments = []; _selectedCategory = null; });
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Feedback submitted successfully!'),
-                    backgroundColor: _primaryGreen,
-                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: AppTheme.primaryGreen,
                   ),
                 );
-                // Switch to "My Concerns" tab so resident sees the new ticket
                 _tabController.animateTo(1);
               }
             },
@@ -167,83 +150,95 @@ class _FeedbackScreenState extends State<FeedbackScreen>
 
   String _formatDate(String? raw) {
     if (raw == null || raw.isEmpty) return '';
-    final dt = DateTime.tryParse(raw);
+    final dt = DateTime.tryParse(raw)?.toLocal();
     if (dt == null) return raw;
-    final local = dt.toLocal();
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
-    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
-    final minute = local.minute.toString().padLeft(2, '0');
-    final ampm = local.hour >= 12 ? 'PM' : 'AM';
-    return '${months[local.month - 1]} ${local.day}, ${local.year} • $hour:$minute $ampm';
+    final hour   = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final minute = dt.minute.toString().padLeft(2, '0');
+    final ampm   = dt.hour >= 12 ? 'PM' : 'AM';
+    return '${months[dt.month - 1]} ${dt.day}, ${dt.year} • $hour:$minute $ampm';
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return _buildEmbeddedBody();
+    }
     return Scaffold(
-      backgroundColor: _canvas,
+      backgroundColor: AppTheme.bgCanvas,
       appBar: AppBar(
-        title: const Text(
-          'Barangay Feedback & Concerns',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: _textDark,
-        elevation: 0,
+        title: const Text('Feedback & Concerns'),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(49),
+          preferredSize: const Size.fromHeight(50),
           child: Column(
             children: [
               TabBar(
                 controller: _tabController,
-                indicatorColor: _primaryGreen,
-                indicatorWeight: 3,
-                labelColor: _primaryGreen,
-                unselectedLabelColor: _textMuted,
-                labelStyle: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-                unselectedLabelStyle: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                ),
                 tabs: const [
-                  Tab(
-                    icon: Icon(Icons.edit_note_rounded, size: 20),
-                    text: 'Submit Concern',
-                  ),
-                  Tab(
-                    icon: Icon(Icons.mark_chat_read_rounded, size: 20),
-                    text: 'My Concerns',
-                  ),
+                  Tab(icon: Icon(Icons.edit_note_rounded, size: 20), text: 'Submit'),
+                  Tab(icon: Icon(Icons.mark_chat_read_rounded, size: 20), text: 'My Concerns'),
                 ],
               ),
-              Container(color: _cardBorder, height: 1),
+              const Divider(height: 1),
             ],
           ),
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [_buildSubmitFormTab(), _buildMyConcernsTab()],
+        children: [_buildSubmitTab(), _buildMyConcernsTab()],
       ),
     );
   }
 
-  Widget _buildSubmitFormTab() {
+  /// Embedded in Dashboard bottom-nav — shows both tabs inside a column
+  Widget _buildEmbeddedBody() {
+    return Column(
+      children: [
+        // Embedded header
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text('Feedback & Concerns', style: AppTheme.headingMedium),
+              SizedBox(height: 2),
+              Text('Submit issues or suggestions to barangay leadership', style: AppTheme.caption),
+              SizedBox(height: 12),
+            ],
+          ),
+        ),
+        // Tab bar
+        Container(
+          color: Colors.white,
+          child: Column(
+            children: [
+              TabBar(
+                controller: _tabController,
+                tabs: const [
+                  Tab(icon: Icon(Icons.edit_note_rounded, size: 20), text: 'Submit'),
+                  Tab(icon: Icon(Icons.mark_chat_read_rounded, size: 20), text: 'My Concerns'),
+                ],
+              ),
+              const Divider(height: 1),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [_buildSubmitTab(), _buildMyConcernsTab()],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubmitTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Form(
@@ -251,23 +246,14 @@ class _FeedbackScreenState extends State<FeedbackScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Hero banner
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [_primaryGreen, _darkGreen],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: _primaryGreen.withValues(alpha: 0.25),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
+                gradient: AppTheme.welcomeGradient,
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                boxShadow: AppTheme.shadowGreen,
               ),
               child: Row(
                 children: [
@@ -277,11 +263,7 @@ class _FeedbackScreenState extends State<FeedbackScreen>
                       color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.support_agent_rounded,
-                      color: Colors.white,
-                      size: 28,
-                    ),
+                    child: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 28),
                   ),
                   const SizedBox(width: 14),
                   const Expanded(
@@ -293,17 +275,13 @@ class _FeedbackScreenState extends State<FeedbackScreen>
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 15,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                        SizedBox(height: 3),
+                        SizedBox(height: 4),
                         Text(
-                          'Submit concerns, feedback, or community improvement ideas directly to barangay leadership.',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            height: 1.3,
-                          ),
+                          'Send concerns or suggestions directly to barangay officials.',
+                          style: TextStyle(color: Colors.white70, fontSize: 12.5, height: 1.35),
                         ),
                       ],
                     ),
@@ -312,69 +290,35 @@ class _FeedbackScreenState extends State<FeedbackScreen>
               ),
             ),
             const SizedBox(height: 20),
+
+            // Submission error
             Consumer<FeedbackProvider>(
-              builder: (_, fp, _) {
+              builder: (_, fp, __) {
                 if (fp.error == null) return const SizedBox.shrink();
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF1F2),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFFECDD3)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        color: Color(0xFFB93636),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          fp.error!,
-                          style: const TextStyle(
-                            color: Color(0xFFB93636),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
+                return AppTheme.errorBanner(fp.error!);
               },
             ),
-            const Text(
-              'Select a Category (Optional)',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: _textDark,
-              ),
-            ),
+
+            // Category chips
+            const Text('Category (Optional)', style: AppTheme.labelLarge),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: _quickCategories.map((cat) {
-                final title = cat['title'] as String;
-                final icon = cat['icon'] as IconData;
-                final isSelected = _selectedCategory == title;
-
-                return InkWell(
-                  borderRadius: BorderRadius.circular(20),
+                final title    = cat['title'] as String;
+                final icon     = cat['icon'] as IconData;
+                final selected = _selectedCategory == title;
+                return GestureDetector(
                   onTap: () => _selectCategory(title),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 7,
-                    ),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSelected ? _primaryGreen : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      color: selected ? AppTheme.primaryGreen : Colors.white,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                       border: Border.all(
-                        color: isSelected ? _primaryGreen : _cardBorder,
+                        color: selected ? AppTheme.primaryGreen : AppTheme.cardBorder,
                       ),
                     ),
                     child: Row(
@@ -383,17 +327,15 @@ class _FeedbackScreenState extends State<FeedbackScreen>
                         Icon(
                           icon,
                           size: 15,
-                          color: isSelected ? Colors.white : _textMuted,
+                          color: selected ? Colors.white : AppTheme.textMuted,
                         ),
                         const SizedBox(width: 6),
                         Text(
                           title,
                           style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            color: isSelected ? Colors.white : _textDark,
+                            fontSize: 12.5,
+                            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                            color: selected ? Colors.white : AppTheme.textDark,
                           ),
                         ),
                       ],
@@ -403,124 +345,64 @@ class _FeedbackScreenState extends State<FeedbackScreen>
               }).toList(),
             ),
             const SizedBox(height: 18),
-            const Text(
-              'Subject',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: _textDark,
-              ),
-            ),
+
+            // Subject
+            const Text('Subject', style: AppTheme.labelLarge),
             const SizedBox(height: 6),
             TextFormField(
               controller: _subjectCtrl,
-              decoration: InputDecoration(
-                hintText: 'e.g., Uncollected trash near corner Mabini St.',
-                hintStyle: const TextStyle(fontSize: 13, color: _textMuted),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: _cardBorder),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: _cardBorder),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: _primaryGreen,
-                    width: 1.5,
-                  ),
-                ),
+              decoration: AppTheme.inputDecoration(
+                label: '',
+                hint: 'e.g., Uncollected trash near Mabini St.',
               ),
-              validator: (v) => v == null || v.trim().isEmpty
-                  ? 'Please enter a subject'
-                  : null,
+              validator: (v) => v == null || v.trim().isEmpty ? 'Subject is required' : null,
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Message / Concern Details',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: _textDark,
-              ),
-            ),
+
+            // Message
+            const Text('Message / Concern Details', style: AppTheme.labelLarge),
             const SizedBox(height: 6),
             TextFormField(
               controller: _contentCtrl,
               maxLines: 5,
-              decoration: InputDecoration(
-                hintText:
-                    'Describe your issue, date, time, and precise location...',
-                hintStyle: const TextStyle(fontSize: 13, color: _textMuted),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: _cardBorder),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: _cardBorder),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: _primaryGreen,
-                    width: 1.5,
-                  ),
-                ),
+              decoration: AppTheme.inputDecoration(
+                label: '',
+                hint: 'Describe the issue including date, time, and location...',
               ),
-              validator: (v) => v == null || v.trim().isEmpty
-                  ? 'Please enter concern details'
-                  : null,
+              validator: (v) => v == null || v.trim().isEmpty ? 'Please provide details' : null,
             ),
             const SizedBox(height: 18),
-            const Text(
-              'Photos or Supporting Documents (Optional)',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: _textDark,
-              ),
-            ),
-            const SizedBox(height: 6),
+
+            // Attachment picker
+            const Text('Attachments (Optional)', style: AppTheme.labelLarge),
+            const SizedBox(height: 8),
             InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               onTap: _pickAttachments,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 14,
-                  horizontal: 16,
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _cardBorder,
-                    style: BorderStyle.solid,
-                  ),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  border: Border.all(color: AppTheme.cardBorder),
                 ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: const Column(
                   children: [
-                    Icon(
-                      Icons.add_photo_alternate_rounded,
-                      color: _primaryGreen,
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
+                    Icon(Icons.add_photo_alternate_rounded, color: AppTheme.primaryGreen, size: 24),
+                    SizedBox(height: 6),
                     Text(
-                      'Attach Photos or PDF (Up to 10 files)',
+                      'Add Photos or PDF',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: _primaryGreen,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primaryGreen,
                       ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Up to 10 files · Max 10 MB each',
+                      style: TextStyle(fontSize: 11.5, color: AppTheme.textHint),
                     ),
                   ],
                 ),
@@ -534,44 +416,29 @@ class _FeedbackScreenState extends State<FeedbackScreen>
                 children: [
                   for (var i = 0; i < _attachments.length; i++)
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: _cardBorder),
+                        border: Border.all(color: AppTheme.cardBorder),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
-                            Icons.attach_file_rounded,
-                            size: 14,
-                            color: _textMuted,
-                          ),
-                          const SizedBox(width: 4),
+                          const Icon(Icons.attach_file_rounded, size: 13, color: AppTheme.textMuted),
+                          const SizedBox(width: 5),
                           ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 160),
+                            constraints: const BoxConstraints(maxWidth: 140),
                             child: Text(
                               _attachments[i].name,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: _textDark,
-                              ),
+                              style: const TextStyle(fontSize: 12, color: AppTheme.textDark),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          InkWell(
-                            onTap: () =>
-                                setState(() => _attachments.removeAt(i)),
-                            child: const Icon(
-                              Icons.close_rounded,
-                              size: 14,
-                              color: Colors.grey,
-                            ),
+                          const SizedBox(width: 5),
+                          GestureDetector(
+                            onTap: () => setState(() => _attachments.removeAt(i)),
+                            child: const Icon(Icons.close_rounded, size: 14, color: AppTheme.textHint),
                           ),
                         ],
                       ),
@@ -580,48 +447,44 @@ class _FeedbackScreenState extends State<FeedbackScreen>
               ),
             ],
             const SizedBox(height: 24),
+
+            // Submit button
             Consumer<FeedbackProvider>(
-              builder: (_, fp, _) => SizedBox(
+              builder: (_, fp, __) => SizedBox(
                 width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
+                height: 52,
+                child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryGreen,
+                    backgroundColor: AppTheme.primaryGreen,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                     ),
                   ),
                   onPressed: fp.submitting ? null : _submit,
-                  child: fp.submitting
+                  icon: fp.submitting
                       ? const SizedBox(
-                          width: 22,
-                          height: 22,
+                          width: 20,
+                          height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             color: Colors.white,
                           ),
                         )
-                      : const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.send_rounded, size: 18),
-                            SizedBox(width: 8),
-                            Text(
-                              'SUBMIT REPORT',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
-                        ),
+                      : const Icon(Icons.send_rounded, size: 18),
+                  label: Text(
+                    fp.submitting ? 'Submitting...' : 'SUBMIT REPORT',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -630,58 +493,22 @@ class _FeedbackScreenState extends State<FeedbackScreen>
 
   Widget _buildMyConcernsTab() {
     return Consumer<FeedbackProvider>(
-      builder: (context, fp, _) {
+      builder: (context, fp, __) {
         if (fp.loading) {
-          return const Center(
-            child: CircularProgressIndicator(color: _primaryGreen),
-          );
+          return const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen));
         }
-
         if (fp.feedbacks.isEmpty) {
           return RefreshIndicator(
-            color: _primaryGreen,
+            color: AppTheme.primaryGreen,
             onRefresh: () => fp.fetchMyFeedback(),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
-                const SizedBox(height: 80),
-                Center(
-                  child: Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEAF3E6),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.mark_chat_read_rounded,
-                      color: _primaryGreen,
-                      size: 36,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  'No Submitted Concerns Yet',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: _textDark,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
-                  child: Text(
-                    'You haven’t submitted any reports or community feedback yet. Tap "Submit Concern" above to send one directly to barangay officials.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: _textMuted,
-                      height: 1.4,
-                    ),
-                  ),
+                const SizedBox(height: 40),
+                AppTheme.emptyState(
+                  icon: Icons.mark_chat_read_rounded,
+                  title: 'No Submitted Concerns Yet',
+                  subtitle: "You haven't submitted any reports yet. Use the Submit tab to send one.",
                 ),
               ],
             ),
@@ -689,17 +516,14 @@ class _FeedbackScreenState extends State<FeedbackScreen>
         }
 
         return RefreshIndicator(
-          color: _primaryGreen,
+          color: AppTheme.primaryGreen,
           onRefresh: () => fp.fetchMyFeedback(),
           child: ListView.separated(
             padding: const EdgeInsets.all(16),
             physics: const AlwaysScrollableScrollPhysics(),
             itemCount: fp.feedbacks.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final item = fp.feedbacks[index];
-              return _buildFeedbackCard(item);
-            },
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (_, i) => _buildFeedbackCard(fp.feedbacks[i]),
           ),
         );
       },
@@ -707,23 +531,21 @@ class _FeedbackScreenState extends State<FeedbackScreen>
   }
 
   Widget _buildFeedbackCard(FeedbackModel item) {
-    final isResolved = item.isResolved;
+    final resolved = item.isResolved;
+    final statusColor  = resolved ? AppTheme.successGreen  : AppTheme.warningAmber;
+    final statusBg     = resolved ? AppTheme.successLight   : AppTheme.warningLight;
+    final statusIcon   = resolved ? Icons.check_circle_rounded : Icons.schedule_rounded;
+    final statusLabel  = resolved ? 'Resolved' : 'Pending Review';
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         border: Border.all(
-          color: isResolved ? const Color(0xFF86EFAC) : const Color(0xFFFDE68A),
+          color: statusColor.withValues(alpha: 0.5),
           width: 1.2,
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x060F172A),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
+        boxShadow: AppTheme.shadowSm,
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -731,51 +553,16 @@ class _FeedbackScreenState extends State<FeedbackScreen>
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: isResolved
-                      ? const Color(0xFFDCFCE7)
-                      : const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isResolved
-                          ? Icons.check_circle_rounded
-                          : Icons.schedule_rounded,
-                      size: 13,
-                      color: isResolved
-                          ? const Color(0xFF15803D)
-                          : const Color(0xFFB45309),
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      isResolved ? 'Resolved' : 'Pending Review',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
-                        color: isResolved
-                            ? const Color(0xFF15803D)
-                            : const Color(0xFFB45309),
-                      ),
-                    ),
-                  ],
-                ),
+              AppTheme.statusChip(
+                label: statusLabel,
+                color: statusColor,
+                bgColor: statusBg,
+                icon: statusIcon,
               ),
               const Spacer(),
               Text(
                 _formatDate(item.timestamp),
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  color: _textMuted,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: const TextStyle(fontSize: 11, color: AppTheme.textHint),
               ),
             ],
           ),
@@ -785,17 +572,13 @@ class _FeedbackScreenState extends State<FeedbackScreen>
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: _textDark,
+              color: AppTheme.textDark,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             item.content,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF334155),
-              height: 1.45,
-            ),
+            style: const TextStyle(fontSize: 13.5, color: AppTheme.textBody, height: 1.45),
           ),
           if (item.attachments.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -803,62 +586,28 @@ class _FeedbackScreenState extends State<FeedbackScreen>
               spacing: 6,
               runSpacing: 6,
               children: item.attachments.map((att) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: _cardBorder),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        att.mimeType.contains('pdf')
-                            ? Icons.picture_as_pdf_rounded
-                            : Icons.image_rounded,
-                        size: 13,
-                        color: _primaryGreen,
-                      ),
-                      const SizedBox(width: 5),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 150),
-                        child: Text(
-                          att.originalFilename,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: _textDark,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
+                final isPdf = att.mimeType.contains('pdf');
+                return AppTheme.statusChip(
+                  label: att.originalFilename,
+                  color: AppTheme.primaryGreen,
+                  icon: isPdf ? Icons.picture_as_pdf_rounded : Icons.image_rounded,
                 );
               }).toList(),
             ),
           ],
-          if (isResolved && item.resolvedAt != null) ...[
+          if (resolved && item.resolvedAt != null) ...[
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFBBF7D0)),
+                color: AppTheme.successLight,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                border: Border.all(color: AppTheme.successGreen.withValues(alpha: 0.35)),
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.verified_rounded,
-                    color: Color(0xFF16A34A),
-                    size: 16,
-                  ),
+                  const Icon(Icons.verified_rounded, color: AppTheme.successGreen, size: 16),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -866,7 +615,7 @@ class _FeedbackScreenState extends State<FeedbackScreen>
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF15803D),
+                        color: AppTheme.successGreen,
                       ),
                     ),
                   ),

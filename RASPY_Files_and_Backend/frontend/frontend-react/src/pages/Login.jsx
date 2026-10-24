@@ -132,6 +132,50 @@ export default function Login() {
           </Alert>
         )}
 
+        {/* Resident Mobile App Advisory Banner */}
+        <Box sx={{
+          p: 1.6,
+          mb: 2.5,
+          bgcolor: 'rgba(88, 125, 70, 0.08)',
+          border: '1px solid rgba(88, 125, 70, 0.25)',
+          borderRadius: 2.5,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1.5,
+        }}>
+          <Box>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: '#3f5d30', display: 'block', fontSize: '0.74rem' }}>
+              RESIDENT MOBILE APPLICATION
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#475569', fontSize: '0.78rem', lineHeight: 1.35 }}>
+              Residente ka ba? Gamitin ang opisyal na Mobile App para sa truck alerts at serbisyo.
+            </Typography>
+          </Box>
+          <Button
+            component="a"
+            href="/visiontrak.apk"
+            download="VisionTrak_Barangay133.apk"
+            size="small"
+            variant="contained"
+            sx={{
+              bgcolor: '#587d46',
+              color: '#ffffff',
+              fontWeight: 750,
+              fontSize: '0.72rem',
+              py: 0.6,
+              px: 1.4,
+              borderRadius: 2,
+              textTransform: 'none',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              '&:hover': { bgcolor: '#446435' }
+            }}
+          >
+            Get App (.APK)
+          </Button>
+        </Box>
+
         <form onSubmit={handleLogin}>
           <TextField
             label="Username or Email"

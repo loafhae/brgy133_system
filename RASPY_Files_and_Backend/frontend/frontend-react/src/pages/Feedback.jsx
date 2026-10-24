@@ -147,9 +147,39 @@ export default function Feedback() {
   ];
 
   return (
-    <Box>
-      <Typography variant="h4" sx={{ fontWeight: 600, mb: 2 }}>Feedback</Typography>
-      <DataGrid rows={items} columns={columns} getRowId={(r) => r.feedback_id} loading={loading} autoHeight pageSizeOptions={[10, 25, 50]} disableRowSelectionOnClick />
+    <Box sx={{ py: 1 }} className="animate-fade-in">
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', fontSize: { xs: '1.4rem', sm: '1.8rem', md: '2.1rem' } }}>
+          Citizen Feedback & Inquiries
+        </Typography>
+        <Typography variant="body2" sx={{ color: '#64748b', mt: 0.4, fontSize: { xs: '0.84rem', sm: '0.92rem' } }}>
+          Review citizen reports, public feedback, attachments, and resolution statuses.
+        </Typography>
+      </Box>
+
+      <Paper sx={{
+        bgcolor: '#ffffff',
+        borderRadius: 3.5,
+        border: '1px solid rgba(226, 232, 240, 0.85)',
+        boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 4px 16px rgba(15, 23, 42, 0.03)',
+        overflow: 'hidden',
+        p: { xs: 1, sm: 1.5 },
+      }}>
+        <Box sx={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <Box sx={{ minWidth: 700 }}>
+            <DataGrid
+              rows={items}
+              columns={columns}
+              getRowId={(r) => r.feedback_id}
+              loading={loading}
+              autoHeight
+              pageSizeOptions={[10, 25, 50]}
+              disableRowSelectionOnClick
+              sx={{ border: 'none' }}
+            />
+          </Box>
+        </Box>
+      </Paper>
 
       <Dialog open={viewOpen} onClose={() => setViewOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{selected?.subject}</DialogTitle>

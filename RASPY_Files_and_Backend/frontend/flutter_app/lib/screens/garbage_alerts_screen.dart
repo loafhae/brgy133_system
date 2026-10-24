@@ -1,30 +1,35 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 
 class GarbageAlertsScreen extends StatefulWidget {
-  const GarbageAlertsScreen({super.key});
+  /// When [embedded] is true, the screen is rendered inside the Dashboard
+  /// tab body and should not show its own AppBar.
+  final bool embedded;
+
+  const GarbageAlertsScreen({super.key, this.embedded = false});
 
   @override
   State<GarbageAlertsScreen> createState() => _GarbageAlertsScreenState();
 }
 
-class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
-  static const Color _primaryGreen = Color(0xFF587D46);
-  static const Color _darkGreen = Color(0xFF3F5D30);
-  static const Color _canvas = Color(0xFFF8FAFC);
-  static const Color _cardBorder = Color(0xFFE2E8F0);
-  static const Color _textDark = Color(0xFF0F172A);
-  static const Color _textMuted = Color(0xFF64748B);
-
+class _GarbageAlertsScreenState extends State<GarbageAlertsScreen>
+    with SingleTickerProviderStateMixin {
   String? _status;
   List<dynamic> _history = [];
   bool _loading = true;
   Timer? _timer;
+  late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+
     _fetch();
     _startPolling();
   }
@@ -32,6 +37,7 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -73,24 +79,17 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
   Widget build(BuildContext context) {
     final bool isDetected = _status == 'detected';
 
+    if (widget.embedded) {
+      return _buildBody(isDetected);
+    }
     return Scaffold(
-      backgroundColor: _canvas,
+      backgroundColor: AppTheme.bgCanvas,
       appBar: AppBar(
-        title: const Text(
-          'Garbage Alerts',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: _textDark,
-        elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: _cardBorder, height: 1),
-        ),
+        title: const Text('Garbage Alerts'),
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh_rounded, color: _primaryGreen),
+            icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryGreen),
             onPressed: () {
               setState(() => _loading = true);
               _fetch();
@@ -98,117 +97,118 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        color: _primaryGreen,
-        onRefresh: _fetch,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildLiveHeroCard(isDetected),
-              const SizedBox(height: 18),
-              _buildSegregationGuideCard(),
-              const SizedBox(height: 24),
+      body: _buildBody(isDetected),
+    );
+  }
+
+  Widget _buildBody(bool isDetected) {
+    return RefreshIndicator(
+      color: AppTheme.primaryGreen,
+      onRefresh: _fetch,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (widget.embedded) ...[
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Collection History',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: _textDark,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _primaryGreen.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${_history.length} records',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: _primaryGreen,
-                      ),
-                    ),
-                  ),
+                children: const [
+                  Text('Garbage Alerts', style: AppTheme.headingMedium),
+                  Spacer(),
                 ],
               ),
-              const SizedBox(height: 12),
-              if (_loading && _history.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 40),
-                  child: Center(
-                    child: CircularProgressIndicator(color: _primaryGreen),
-                  ),
-                )
-              else if (_history.isEmpty)
-                _buildEmptyHistoryCard()
-              else
-                ..._history.map((n) => _buildHistoryItem(n)),
+              const SizedBox(height: 4),
+              const Text(
+                'Live garbage truck detection for Barangay 133',
+                style: AppTheme.caption,
+              ),
+              const SizedBox(height: 16),
             ],
-          ),
+            _buildLiveHeroCard(isDetected),
+            const SizedBox(height: 18),
+            _buildSegregationCard(),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Collection History', style: AppTheme.headingSmall),
+                AppTheme.statusChip(
+                  label: '${_history.length} records',
+                  color: AppTheme.primaryGreen,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (_loading && _history.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Center(
+                  child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+                ),
+              )
+            else if (_history.isEmpty)
+              AppTheme.emptyState(
+                icon: Icons.history_rounded,
+                title: 'No Collection History',
+                subtitle: 'Recorded truck detection alerts will appear here.',
+              )
+            else
+              ..._history.map((n) => _buildHistoryItem(n)),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildLiveHeroCard(bool isDetected) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 500),
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDetected
-              ? [const Color(0xFFE65100), const Color(0xFFEF6C00)]
-              : [_primaryGreen, _darkGreen],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
+        gradient: isDetected ? AppTheme.activeAlertGradient : AppTheme.welcomeGradient,
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
         boxShadow: [
           BoxShadow(
-            color: (isDetected ? const Color(0xFFE65100) : _primaryGreen)
-                .withValues(alpha: 0.25),
-            blurRadius: 16,
+            color: (isDetected ? AppTheme.warningAmber : AppTheme.primaryGreen)
+                .withValues(alpha: 0.28),
+            blurRadius: 20,
             offset: const Offset(0, 8),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Status pill
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.3),
-                  ),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: isDetected ? Colors.amberAccent : Colors.white,
-                        shape: BoxShape.circle,
+                    AnimatedBuilder(
+                      animation: _pulseController,
+                      builder: (_, __) => Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: isDetected
+                              ? Colors.amberAccent.withValues(
+                                  alpha: 0.6 + 0.4 * _pulseController.value,
+                                )
+                              : Colors.white.withValues(
+                                  alpha: 0.6 + 0.4 * _pulseController.value,
+                                ),
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -228,14 +228,14 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
               const Icon(Icons.sensors_rounded, color: Colors.white, size: 22),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
+                  color: Colors.white.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -243,7 +243,7 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
                       ? Icons.local_shipping_rounded
                       : Icons.check_circle_outline_rounded,
                   color: Colors.white,
-                  size: 36,
+                  size: 34,
                 ),
               ),
               const SizedBox(width: 16),
@@ -259,17 +259,18 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
+                        height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       isDetected
-                          ? 'A garbage collection truck was detected within Barangay 133. You may now bring out properly segregated waste.'
+                          ? 'A garbage truck was detected within Barangay 133. Bring out your properly segregated waste now.'
                           : 'Smart AI cameras are actively monitoring and will alert you the moment a truck arrives.',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 13,
-                        height: 1.35,
+                        height: 1.4,
                       ),
                     ),
                   ],
@@ -284,23 +285,23 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFFE65100),
+                  foregroundColor: AppTheme.warningAmber,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
                 ),
                 icon: const Icon(Icons.notifications_active_rounded, size: 18),
                 label: const Text(
                   'Set Reminder',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Reminder set for garbage collection.'),
-                      backgroundColor: _primaryGreen,
+                      backgroundColor: AppTheme.primaryGreen,
                     ),
                   );
                 },
@@ -312,51 +313,45 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
     );
   }
 
-  Widget _buildSegregationGuideCard() {
+  Widget _buildSegregationCard() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _cardBorder),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppTheme.cardBorder),
+        boxShadow: AppTheme.shadowSm,
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.recycling_rounded, color: _primaryGreen, size: 20),
+          Row(
+            children: const [
+              Icon(Icons.recycling_rounded, color: AppTheme.primaryGreen, size: 20),
               SizedBox(width: 8),
-              Text(
-                'Waste Segregation Guidelines',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: _textDark,
-                ),
-              ),
+              Text('Waste Segregation Guide', style: AppTheme.headingSmall),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Row(
             children: [
-              _buildSegregationPill(
+              _segregationPill(
                 label: 'Biodegradable',
-                sub: 'Food scraps, peels',
+                sub: 'Food scraps, leaves',
                 color: const Color(0xFF2E7D32),
                 icon: Icons.eco_rounded,
               ),
               const SizedBox(width: 8),
-              _buildSegregationPill(
-                label: 'Non-Biodegradable',
+              _segregationPill(
+                label: 'Non-Bio',
                 sub: 'Plastics, styrofoam',
                 color: const Color(0xFF1565C0),
                 icon: Icons.delete_outline_rounded,
               ),
               const SizedBox(width: 8),
-              _buildSegregationPill(
+              _segregationPill(
                 label: 'Recyclable',
-                sub: 'Bottles, paper, cans',
+                sub: 'Bottles, cans',
                 color: const Color(0xFFE65100),
                 icon: Icons.autorenew_rounded,
               ),
@@ -367,7 +362,7 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
     );
   }
 
-  Widget _buildSegregationPill({
+  Widget _segregationPill({
     required String label,
     required String sub,
     required Color color,
@@ -375,7 +370,7 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
   }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
@@ -383,13 +378,13 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
         ),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 20),
+            Icon(icon, color: color, size: 22),
             const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
                 color: color,
               ),
               textAlign: TextAlign.center,
@@ -397,10 +392,7 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
             const SizedBox(height: 2),
             Text(
               sub,
-              style: TextStyle(
-                fontSize: 10,
-                color: _textMuted.withValues(alpha: 0.9),
-              ),
+              style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -411,51 +403,13 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
     );
   }
 
-  Widget _buildEmptyHistoryCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _cardBorder),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.history_rounded,
-            size: 48,
-            color: _textMuted.withValues(alpha: 0.5),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'No Collection History Yet',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: _textDark,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Recorded truck collection alerts will appear here.',
-            style: TextStyle(fontSize: 13, color: _textMuted),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildHistoryItem(dynamic n) {
-    final String type = (n['notification_type'] ?? n['type'] ?? 'detection')
-        .toString();
+    final String type = (n['notification_type'] ?? n['type'] ?? 'detection').toString();
     final String title = n['title'] ?? 'Collection Notice';
     final String? message = n['message'];
     final String rawDate = (n['created_at'] ?? n['sent_at'] ?? '').toString();
 
-    final bool isTruck =
-        type == 'detection' ||
+    final bool isTruck = type == 'detection' ||
         title.toLowerCase().contains('truck') ||
         title.toLowerCase().contains('garbage');
 
@@ -463,58 +417,59 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _cardBorder),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.cardBorder),
+        boxShadow: AppTheme.shadowSm,
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Container(
-          width: 44,
-          height: 44,
+          width: 46,
+          height: 46,
           decoration: BoxDecoration(
             color: isTruck
-                ? _primaryGreen.withValues(alpha: 0.12)
-                : Colors.amber.withValues(alpha: 0.15),
+                ? AppTheme.primaryGreen.withValues(alpha: 0.12)
+                : AppTheme.warningAmber.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           child: Icon(
             isTruck ? Icons.local_shipping_rounded : Icons.campaign_rounded,
-            color: isTruck ? _primaryGreen : const Color(0xFFD97706),
+            color: isTruck ? AppTheme.primaryGreen : AppTheme.warningAmber,
             size: 22,
           ),
         ),
         title: Text(
           title,
           style: const TextStyle(
-            fontSize: 14.5,
+            fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: _textDark,
+            color: AppTheme.textDark,
           ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (message != null && message.trim().isNotEmpty) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 message,
-                style: const TextStyle(fontSize: 13, color: _textDark),
+                style: const TextStyle(fontSize: 13, color: AppTheme.textBody),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
-            const SizedBox(height: 6),
+            const SizedBox(height: 5),
             Row(
               children: [
                 const Icon(
                   Icons.access_time_rounded,
-                  size: 13,
-                  color: _textMuted,
+                  size: 12,
+                  color: AppTheme.textHint,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   _formatDate(rawDate),
-                  style: const TextStyle(fontSize: 11.5, color: _textMuted),
+                  style: const TextStyle(fontSize: 11.5, color: AppTheme.textHint),
                 ),
               ],
             ),
@@ -528,24 +483,15 @@ class _GarbageAlertsScreenState extends State<GarbageAlertsScreen> {
     if (date == null || date.isEmpty) return 'Recent';
     final dt = DateTime.tryParse(date);
     if (dt == null) return date;
-
     final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
     final ampm = dt.hour >= 12 ? 'PM' : 'AM';
     final minute = dt.minute.toString().padLeft(2, '0');
-
     return '${_dayName(dt.weekday)}, ${dt.month}/${dt.day}/${dt.year} $hour:$minute $ampm';
   }
 
   String _dayName(int weekday) {
     const names = [
-      '',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
+      '', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun',
     ];
     if (weekday >= 1 && weekday <= 7) return names[weekday];
     return '';

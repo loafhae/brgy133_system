@@ -353,7 +353,7 @@ export default function DashboardLayout() {
           }),
         }}
       >
-        <Toolbar sx={{ minHeight: '68px', px: { xs: 2, md: 3.5 } }}>
+        <Toolbar sx={{ minHeight: '68px', px: { xs: 1.5, sm: 2.5, md: 3.5 } }}>
           {/* Universal Hamburger Toggle */}
           <Tooltip title={(!isMobile && desktopOpen) ? 'Collapse Sidebar (Full Screen View)' : 'Expand Sidebar'}>
             <IconButton
@@ -362,12 +362,12 @@ export default function DashboardLayout() {
               aria-label="Toggle navigation drawer"
               onClick={handleToggleSidebar}
               sx={{
-                mr: 2.2,
+                mr: { xs: 1.2, sm: 2.2 },
                 color: '#334155',
                 bgcolor: '#f1f5f9',
                 border: '1px solid #e2e8f0',
                 borderRadius: 2.2,
-                p: 0.9,
+                p: { xs: 0.8, sm: 0.9 },
                 transition: 'all 0.2s',
                 '&:hover': {
                   bgcolor: '#e2e8f0',
@@ -380,9 +380,19 @@ export default function DashboardLayout() {
             </IconButton>
           </Tooltip>
 
-          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1.8 }}>
+          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.8 } }}>
             <Box>
-              <Typography variant="h6" noWrap sx={{ fontWeight: 800, color: '#0f172a', fontSize: '1.18rem', letterSpacing: '-0.01em' }}>
+              <Typography
+                variant="h6"
+                noWrap
+                sx={{
+                  fontWeight: 800,
+                  color: '#0f172a',
+                  fontSize: { xs: '1rem', sm: '1.18rem' },
+                  letterSpacing: '-0.01em',
+                  maxWidth: { xs: '160px', sm: 'none' }
+                }}
+              >
                 {currentLabel}
               </Typography>
               <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.74rem', display: { xs: 'none', sm: 'block' } }}>
@@ -546,7 +556,7 @@ export default function DashboardLayout() {
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2.5, sm: 3.5, md: 4 },
+          p: { xs: 1.5, sm: 2.5, md: 4 },
           mt: '68px',
           minHeight: 'calc(100vh - 68px)',
           bgcolor: '#f8fafc',

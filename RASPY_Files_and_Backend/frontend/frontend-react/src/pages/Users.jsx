@@ -244,12 +244,14 @@ export default function Users() {
           startIcon={<PersonAdd />}
           onClick={() => openForm(null)}
           sx={{
-            bgcolor: '#7d9c65',
-            '&:hover': { bgcolor: '#5f7a4b' },
-            borderRadius: 2,
+            width: { xs: '100%', sm: 'auto' },
+            bgcolor: '#587d46',
+            '&:hover': { bgcolor: '#446435' },
+            borderRadius: 2.2,
             px: 2.5,
-            py: 1,
-            fontWeight: 600
+            py: 1.1,
+            fontWeight: 750,
+            textTransform: 'none'
           }}
         >
           Register Official
@@ -257,15 +259,15 @@ export default function Users() {
       </Box>
 
       {/* Filter and Search Bar */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', gap: 1.5, mb: 3, flexWrap: 'wrap' }}>
         <TextField
           label="Search by name, username, or email"
           size="small"
-          sx={{ minWidth: 320, bgcolor: '#fff', borderRadius: 1 }}
+          sx={{ flex: { xs: '1 1 100%', sm: '1 1 280px' }, bgcolor: '#fff', borderRadius: 1 }}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <FormControl size="small" sx={{ minWidth: 180, bgcolor: '#fff', borderRadius: 1 }}>
+        <FormControl size="small" sx={{ flex: { xs: '1 1 100%', sm: '0 1 180px' }, bgcolor: '#fff', borderRadius: 1 }}>
           <InputLabel>Filter by Role</InputLabel>
           <Select value={roleFilter} label="Filter by Role" onChange={(e) => setRoleFilter(e.target.value)}>
             <MenuItem value="">All Roles</MenuItem>
@@ -279,20 +281,24 @@ export default function Users() {
       </Box>
 
       {/* Table Card */}
-      <Box sx={{ bgcolor: '#fff', borderRadius: 2, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-        <DataGrid 
-          rows={filtered} 
-          columns={columns} 
-          getRowId={(r) => r.user_id} 
-          loading={loading} 
-          autoHeight 
-          pageSizeOptions={[10, 25, 50]} 
-          disableRowSelectionOnClick
-          sx={{
-            border: 'none',
-            '& .MuiDataGrid-columnHeaders': { bgcolor: '#f8fafc', fontWeight: 700 },
-          }}
-        />
+      <Box sx={{ bgcolor: '#fff', borderRadius: 3, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <Box sx={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <Box sx={{ minWidth: 700 }}>
+            <DataGrid 
+              rows={filtered} 
+              columns={columns} 
+              getRowId={(r) => r.user_id} 
+              loading={loading} 
+              autoHeight 
+              pageSizeOptions={[10, 25, 50]} 
+              disableRowSelectionOnClick
+              sx={{
+                border: 'none',
+                '& .MuiDataGrid-columnHeaders': { bgcolor: '#f8fafc', fontWeight: 700 },
+              }}
+            />
+          </Box>
+        </Box>
       </Box>
 
       {/* Add / Edit User Dialog */}

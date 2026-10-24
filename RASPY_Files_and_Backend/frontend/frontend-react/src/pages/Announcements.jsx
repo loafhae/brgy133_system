@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Switch, FormControlLabel, Snackbar,
+  TextField, Switch, FormControlLabel, Snackbar, Paper
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import api from '../api/client';
@@ -78,7 +78,7 @@ export default function Announcements() {
 
   const columns = [
     { field: 'announcement_id', headerName: 'ID', width: 70 },
-    { field: 'title', headerName: 'Title', flex: 1 },
+    { field: 'title', headerName: 'Title', flex: 1, minWidth: 200 },
     { field: 'date_posted', headerName: 'Date', width: 180, valueFormatter: (v) => v ? new Date(v).toLocaleString() : '' },
     { field: 'is_published', headerName: 'Status', width: 110, renderCell: ({ row }) => (row.is_published ? 'Publish' : 'Draft') },
     {
@@ -93,22 +93,86 @@ export default function Announcements() {
   ];
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h4" sx={{ fontWeight: 600 }}>Announcements</Typography>
-        <Button variant="contained" onClick={() => openForm(null)}>Add Announcement</Button>
+    <Box sx={{ py: 1 }} className="animate-fade-in">
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 1.5, mb: 2.5 }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', fontSize: { xs: '1.4rem', sm: '1.8rem', md: '2.1rem' } }}>
+            Community Announcements
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#64748b', mt: 0.4, fontSize: { xs: '0.84rem', sm: '0.92rem' } }}>
+            Publish official updates, public health missions, and general community notices.
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          onClick={() => openForm(null)}
+          sx={{
+            width: { xs: '100%', sm: 'auto' },
+            bgcolor: '#587d46',
+            '&:hover': { bgcolor: '#446435' },
+            fontWeight: 750,
+            borderRadius: 2.5,
+            textTransform: 'none',
+            px: 2.8,
+            py: 1.1,
+          }}
+        >
+          Add Announcement
+        </Button>
       </Box>
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-        <TextField label="Search announcements" size="small" sx={{ minWidth: 300 }}
-          value={search} onChange={(e) => setSearch(e.target.value)} />
-        <TextField label="From" type="date" size="small" sx={{ minWidth: 180 }}
-          value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-          slotProps={{ inputLabel: { shrink: true } }} />
-        <TextField label="To" type="date" size="small" sx={{ minWidth: 180 }}
-          value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-          slotProps={{ inputLabel: { shrink: true } }} />
+
+      {/* Filter Row - Full Width / Stack on Mobile */}
+      <Box sx={{ display: 'flex', gap: 1.5, mb: 2.5, flexWrap: 'wrap', alignItems: 'center' }}>
+        <TextField
+          label="Search announcements"
+          size="small"
+          sx={{ flex: { xs: '1 1 100%', sm: '1 1 240px' } }}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <TextField
+          label="From"
+          type="date"
+          size="small"
+          sx={{ flex: { xs: '1 1 48%', sm: '0 1 160px' } }}
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        <TextField
+          label="To"
+          type="date"
+          size="small"
+          sx={{ flex: { xs: '1 1 48%', sm: '0 1 160px' } }}
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
       </Box>
-      <DataGrid rows={filtered} columns={columns} getRowId={(r) => r.announcement_id} loading={loading} autoHeight pageSizeOptions={[10, 25, 50]} disableRowSelectionOnClick />
+
+      <Paper sx={{
+        bgcolor: '#ffffff',
+        borderRadius: 3.5,
+        border: '1px solid rgba(226, 232, 240, 0.85)',
+        boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 4px 16px rgba(15, 23, 42, 0.03)',
+        overflow: 'hidden',
+        p: { xs: 1, sm: 1.5 },
+      }}>
+        <Box sx={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <Box sx={{ minWidth: 650 }}>
+            <DataGrid
+              rows={filtered}
+              columns={columns}
+              getRowId={(r) => r.announcement_id}
+              loading={loading}
+              autoHeight
+              pageSizeOptions={[10, 25, 50]}
+              disableRowSelectionOnClick
+              sx={{ border: 'none' }}
+            />
+          </Box>
+        </Box>
+      </Paper>
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{edit ? 'Edit Announcement' : 'Add Announcement'}</DialogTitle>
