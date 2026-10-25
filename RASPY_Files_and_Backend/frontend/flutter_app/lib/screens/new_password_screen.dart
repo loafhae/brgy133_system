@@ -223,7 +223,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                         obscureText: _obscureConfirm,
                         textInputAction: TextInputAction.done,
                         onChanged: (_) => setState(() { _errorMessage = null; }),
-                        onSubmitted: (_) { if (!_loading) _submitNewPassword(); },
+                        onFieldSubmitted: (_) { if (!_loading) _submitNewPassword(); },
                         decoration: AppTheme.inputDecoration(
                           label: 'Confirm Password',
                           prefixIcon: const Icon(

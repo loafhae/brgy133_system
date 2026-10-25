@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/services/api_service.dart';
-import 'package:flutter_app/services/phone_utils.dart';
+import 'package:visiontrak/services/api_service.dart';
+import 'package:visiontrak/services/phone_utils.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -700,15 +700,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _cardBorder),
+          borderSide: BorderSide(color: _cardBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _cardBorder),
+          borderSide: BorderSide(color: _cardBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _primaryGreen, width: 1.5),
+          borderSide: BorderSide(color: _primaryGreen, width: 1.5),
         ),
         suffixIcon: suffixIcon,
       ),

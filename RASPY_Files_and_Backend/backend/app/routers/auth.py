@@ -295,8 +295,8 @@ def register(body: RegisterRequest, request: Request, db: Session = Depends(get_
         is_approved = 1
 
     birthday_parsed = None
-    if body.birthday and str(body.birthday).strip():
-        b_str = str(body.birthday).strip()[:10]
+    if body.birthday and body.birthday.strip():
+        b_str = body.birthday.strip()[:10]
         try:
             birthday_parsed = datetime.strptime(b_str, "%Y-%m-%d").date()
         except Exception:
@@ -508,7 +508,7 @@ def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user = _get_recovery_user(body.email, db)
 
     otp = f"{secrets.randbelow(1_000_000):06d}"
-    if not send_otp_email(user.email, otp):
+    if not user.email or not send_otp_email(user.email, otp):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Unable to send the verification code. Please try again later.",
